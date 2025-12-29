@@ -1,5 +1,5 @@
-'Quest3 Robot' Project (V1.0)
-=============================
+'Quest3 Robot' Project
+======================
 
 This Unity project demonstrates how a 'Meta Quest 3' VR headset can be used as the "brain" of a robot. The Quest 3 acts as both the control system and sensor array, providing spatial mapping, positional tracking, pathfinding and on-device AI speech recognition.
 
