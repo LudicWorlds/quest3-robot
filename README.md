@@ -1,5 +1,5 @@
-'Quest3 Robot' Project
-======================
+'Quest 3 Robot' Project
+=======================
 
 This Unity project demonstrates how a 'Meta Quest 3' VR headset can be used as the "brain" of a robot. The Quest 3 acts as both the control system and sensor array, providing spatial mapping, positional tracking, pathfinding and on-device AI speech recognition.
 
@@ -74,6 +74,21 @@ Software Requirements
 - **Unity AI Navigation** - For NavMesh support
 
 
+Downloading This Project
+------------------------
+
+**Option A: Download Release (Easiest)**
+Download the complete project ZIP from the [Releases page](https://github.com/LudicWorlds/quest3-robot/releases) - no Git LFS required.
+
+**Option B: Clone with Git LFS**
+1. Install Git LFS: https://git-lfs.github.com/
+2. Clone the repository:
+   ```bash
+   git lfs install
+   git clone https://github.com/yourusername/quest3-robot.git
+```
+
+
 Project Setup
 -------------
 
@@ -97,7 +112,6 @@ For complete wiring instructions, see the circuit diagram: `Documentation/quest3
 1. Cover the proximity sensor with electrical tape (prevents auto-sleep when mounted on robot)
 2. Cover the lenses (sun protection)
 3. Plug in wireless microphone USB receiver
-
 
 
 ### 2. Unity Project Setup
