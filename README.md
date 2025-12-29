@@ -83,10 +83,11 @@ Download the complete project ZIP from the [Releases page](https://github.com/Lu
 **Option B: Clone with Git LFS**
 1. Install Git LFS: https://git-lfs.github.com/
 2. Clone the repository:
-   ```bash
-   git lfs install
-   git clone https://github.com/yourusername/quest3-robot.git
+```bash
+git lfs install
+git clone https://github.com/yourusername/quest3-robot.git
 ```
+
 
 
 Project Setup
