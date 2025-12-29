@@ -78,7 +78,9 @@ Downloading This Project
 ------------------------
 
 **Option A: Download Release (Easiest)**
+
 Download the complete project ZIP from the [Releases page](https://github.com/LudicWorlds/quest3-robot/releases) - no Git LFS required.
+
 
 **Option B: Clone with Git LFS**
 1. Install Git LFS: https://git-lfs.github.com/
