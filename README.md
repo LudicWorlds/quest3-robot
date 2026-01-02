@@ -87,7 +87,7 @@ Download the complete project ZIP from the [Releases page](https://github.com/Lu
 2. Clone the repository:
 ```bash
 git lfs install
-git clone https://github.com/yourusername/quest3-robot.git
+git clone https://github.com/LudicWorlds/quest3-robot.git
 ```
 
 
