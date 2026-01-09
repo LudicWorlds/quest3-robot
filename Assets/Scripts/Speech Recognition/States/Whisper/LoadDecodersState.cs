@@ -1,6 +1,10 @@
 using LudicWorlds;
 using Unity.InferenceEngine;
 
+
+//Ref: https://docs.unity3d.com/Packages/com.unity.sentis@2.0/manual/edit-a-model.html
+//Ref: https://docs.unity3d.com/Packages/com.unity.sentis@2.0/api/Unity.Sentis.FunctionalGraph.html?q=functionalGraph
+
 public class LoadDecodersState : WhisperState
 {
 
@@ -18,7 +22,7 @@ public class LoadDecodersState : WhisperState
 
     public override void Update()
     {
-        switch (_stage)
+        switch(_stage)
         {
             case 0:
                 CreateDecoders();
@@ -31,7 +35,7 @@ public class LoadDecodersState : WhisperState
             default:
                 _stateMachine.SetState( _nextStateId );
                 break;
-        }
+        }      
     }
 
 

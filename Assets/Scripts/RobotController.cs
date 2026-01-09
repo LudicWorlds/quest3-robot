@@ -423,7 +423,7 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
         SetState(RobotStateID.MOVING);
     }
 
-    protected override void OnDestroy()
+    private void OnDestroy()
     {
         StopHaptics();
 
@@ -433,7 +433,5 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
             _eventBroker.Events[EventID.IDLE_NAV_ENTER] -= OnNavIdleEnter;
             _eventBroker.Events[EventID.IDLE_NAV_EXIT] -= OnNavIdleExit;
         }
-
-        base.OnDestroy();
     }
 }

@@ -47,6 +47,18 @@ public class InitializeState : RecorderState
        }
     }
 
+    /*
+    private void GetAudioSource()
+    {
+        _recorder.Source = Camera.main.GetComponent<AudioSource>();
+
+        if (_recorder.Source is null)
+        {
+            Debug.LogError("-> InitializeState::Enter() - Camera AudioSource is NULL! :(");
+        }
+    }
+    */
+
     private bool GetMicrophone()
     {
         _micInitAttempts++;

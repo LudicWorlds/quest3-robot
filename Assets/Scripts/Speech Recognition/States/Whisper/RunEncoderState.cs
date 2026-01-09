@@ -5,6 +5,8 @@ using Unity.InferenceEngine;
 
 public class RunEncoderState : WhisperState
 {
+    //ref: https://docs.unity3d.com/Packages/com.unity.sentis@2.0/manual/split-inference-over-multiple-frames.html
+
     private IEnumerator _schedule;
     private int _layerCount = 0;
 

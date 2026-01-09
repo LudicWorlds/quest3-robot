@@ -108,8 +108,8 @@ public class Turning_NavState : NavState
 
 
 
-        // Calculate how many degrees we've rotated since entering this state
-        float currentAngle = _ctrl.GetRobotYRotationAngle();
+            // Calculate how many degrees we've rotated since entering this state
+            float currentAngle = _ctrl.GetRobotYRotationAngle();
         float degreesRotated = Mathf.Abs(Mathf.DeltaAngle(_startingAngle, currentAngle));
 
         StuckDetection(currentAngle);
