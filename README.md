@@ -101,6 +101,8 @@ Project Setup
 
 For complete wiring instructions, see the circuit diagram: `Documentation/quest3-robot-circuit-diagram.png`
 
+![Quest3 Robot Circuit Diagram](Documentation/quest3-robot-circuit-diagram.png)
+
 **Program the ESP32:**
 1. Open `ESP32_Code/sketch_esp32_Quest3_Robot.ino` in Arduino IDE
 2. Update WiFi credentials in the code:
@@ -202,6 +204,10 @@ The Quest 3 handles all high-level processing:
 4. **Pathfinding** - Calculates NavMesh path around obstacles
 5. **Navigation** - State machine executes turning and movement actions
 6. **Motor Commands** - ESP32_Communicator sends UDP packets to the ESP32
+
+Unity component structure and relationships:
+
+![Quest3 Robot Unity Script Diagram](Documentation/quest3-robot-unity-script-diagram.png)
 
 The ESP32 handles low-level motor control:
 1. Listens for UDP packets on port 3310

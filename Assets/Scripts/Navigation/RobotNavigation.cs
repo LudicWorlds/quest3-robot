@@ -400,9 +400,10 @@ public class RobotNavigation : GameObjectStateMachine<NavigationID>
         _eventBroker.DispatchEvent(EventID.PLAY_AUDIO, args);
     }
 
-    private void OnDestroy()
+    protected override void OnDestroy()
     {
         _eventBroker = null;
+        base.OnDestroy();
     }
 
 }
