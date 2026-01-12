@@ -63,9 +63,8 @@ Software Requirements
 ---------------------
 
 - **Arduino IDE** - v2.3.6 (For programming the ESP32 microcontroller)
-- **Unity Editor** - Version 6000.2.14f1 (tested version)
+- **Unity Editor** - Version 6000.3.3f1 (tested version)
 
-**KNOWN ISSUE:** Currently, the Unity app will crash on startup if built using Unity version 6000.3. 
 
 **Unity Packages:**
 - **Meta MR Utility Kit** - v81.0.0
