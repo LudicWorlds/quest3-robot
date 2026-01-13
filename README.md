@@ -123,7 +123,7 @@ For complete wiring instructions, see the circuit diagram: `Documentation/quest3
 **Open the Project:**
 1. Launch Unity Hub
 2. Add project from disk
-3. Open with Unity 6000.2.14f1
+3. Open with Unity 6000.3.3f1 (or above)
 4. Wait for package import to complete (may take several minutes)
 
 **Configure Build Settings:**
