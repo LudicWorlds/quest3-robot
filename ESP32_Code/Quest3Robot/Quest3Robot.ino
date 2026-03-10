@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
+//#include "credentials.h"
 
 // Network configuration - Access Point mode
 const char* ssid = "YOUR_WIFI_SSID";
@@ -10,7 +11,8 @@ const int udpPort = 3310;
 
 // Motor control pins using GPIO 16-19 as requested
 const int motorPins[] = {16, 17, 18, 19};  // GPIO16-19 for motor direction
-const int ENA = 25;  // Shared motor speed (PWM) - connected to both ENA and ENB on L298N
+const int ENA = 26;  // Left motor speed (PWM) - GPIO26 to ENA on L298N
+const int ENB = 25;  // Right motor speed (PWM) - GPIO25 to ENB on L298N
 const int ledPin = 4;
 
 // Test patterns for motor testing
@@ -26,8 +28,9 @@ const byte testValues[] = {
 const int pwmFreq = 30000;     // 30kHz PWM frequency
 const int pwmResolution = 8;   // 8-bit resolution (0-255)
 
-// Motor speed value (0-255)
-int sharedMotorSpeed = 180; // Single speed for both motors
+// Motor speed values (0-255) - adjust leftMotorSpeed to compensate for weaker left motor
+int leftMotorSpeed = 232;   // Left motor (ENA) - slightly higher to correct leftward veer
+int rightMotorSpeed = 220;  // Right motor (ENB)
 
 // Timing variables
 unsigned long lastCommandTime = 0;
@@ -39,7 +42,7 @@ void setup() {
     Serial.begin(115200);
     while (!Serial) { delay(10); } // Wait for serial
     Serial.println("\n=== ESP32 Turtle Robot Starting ===");
-    Serial.println("Single PWM pin configuration (GPIO25 -> both ENA and ENB)");
+    Serial.println("Dual PWM pin configuration (GPIO26 -> ENA left, GPIO25 -> ENB right)");
 
     pinMode(ledPin, OUTPUT);
     digitalWrite(ledPin, LOW); 
@@ -52,9 +55,11 @@ void setup() {
     
     // Configure PWM for motor speed control - NEW API for ESP32 Core 3.0+
     ledcAttach(ENA, pwmFreq, pwmResolution);
-    
+    ledcAttach(ENB, pwmFreq, pwmResolution);
+
     // Set initial PWM to 0 (Motors Off)
-    ledcWrite(ENA, sharedMotorSpeed);
+    ledcWrite(ENA, 0);
+    ledcWrite(ENB, 0);
 
     setupWiFiClient();
 
@@ -191,14 +196,16 @@ void ApplyCommand(byte command) {
 
 
 void ApplyPWM(byte command) {
-    // If any motor command is active, apply the shared speed
-    if (command != 0b00000000) {  // If any motor is supposed to move
-        ledcWrite(ENA, sharedMotorSpeed);
-        Serial.printf("PWM set to: %d\n", sharedMotorSpeed);
-    } else {
-        ledcWrite(ENA, 0);  // Both motors off if no command
-        Serial.println("PWM set to: 0 (stopped)");
-    }
+    // Check if each motor is active (any of its direction bits set)
+    bool leftActive = (command & 0b00000011);   // Bits 0-1: left motor
+    bool rightActive = (command & 0b00001100);   // Bits 2-3: right motor
+
+    ledcWrite(ENA, leftActive ? leftMotorSpeed : 0);
+    ledcWrite(ENB, rightActive ? rightMotorSpeed : 0);
+
+    Serial.printf("PWM set to: L=%d R=%d\n",
+        leftActive ? leftMotorSpeed : 0,
+        rightActive ? rightMotorSpeed : 0);
 }
 
 // Additional helper functions for different movement commands

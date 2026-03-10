@@ -19,7 +19,7 @@ public enum RobotAction
 public class ESP32_Communicator : MonoBehaviour
 {
     [Header("Network Settings")]
-    [SerializeField] private string _esp32IP = "192.168.0.18"; // Update with your ESP32's IP
+    [SerializeField] private string _esp32IP = "192.168.0.17"; // Update with your ESP32's IP
     [SerializeField] private int _udpPort = 3310;
     [SerializeField] private GameObject _connectionIndicator; // Optional: 3D object to show connection status
 
