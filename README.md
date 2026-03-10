@@ -103,7 +103,7 @@ For complete wiring instructions, see the circuit diagram: `Documentation/quest3
 ![Quest3 Robot Circuit Diagram](Documentation/quest3-robot-circuit-diagram.png)
 
 **Program the ESP32:**
-1. Open `ESP32_Code/sketch_esp32_Quest3_Robot.ino` in Arduino IDE
+1. Open `ESP32_Code/Quest3Robot/Quest3Robot.ino` in Arduino IDE
 2. Update WiFi credentials in the code:
    ```cpp
    const char* ssid = "YOUR_WIFI_SSID";
