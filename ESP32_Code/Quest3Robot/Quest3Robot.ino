@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
+#include <LiquidCrystal.h>
 //#include "credentials.h"
 
 // Network configuration - Access Point mode
@@ -15,6 +16,18 @@ const int ENA = 26;  // Left motor speed (PWM) - GPIO26 to ENA on L298N
 const int ENB = 25;  // Right motor speed (PWM) - GPIO25 to ENB on L298N
 const int ledPin = 4;
 
+// LCD pin assignments (4-bit mode)
+const int LCD_RS = 13;
+const int LCD_E  = 14;
+const int LCD_D4 = 27;
+const int LCD_D5 = 32;
+const int LCD_D6 = 33;
+const int LCD_D7 = 23;
+
+// Initialise the LiquidCrystal library
+// Parameters: RS, E, D4, D5, D6, D7
+LiquidCrystal lcd(LCD_RS, LCD_E, LCD_D4, LCD_D5, LCD_D6, LCD_D7);
+
 // Test patterns for motor testing
 const byte testValues[] = {
     0b00000000,   // All off
@@ -29,7 +42,7 @@ const int pwmFreq = 30000;     // 30kHz PWM frequency
 const int pwmResolution = 8;   // 8-bit resolution (0-255)
 
 // Motor speed values (0-255) - adjust leftMotorSpeed to compensate for weaker left motor
-int leftMotorSpeed = 232;   // Left motor (ENA) - slightly higher to correct leftward veer
+int leftMotorSpeed = 238;   // Left motor (ENA) - slightly higher to correct leftward veer
 int rightMotorSpeed = 220;  // Right motor (ENB)
 
 // Timing variables
@@ -43,6 +56,12 @@ void setup() {
     while (!Serial) { delay(10); } // Wait for serial
     Serial.println("\n=== ESP32 Turtle Robot Starting ===");
     Serial.println("Dual PWM pin configuration (GPIO26 -> ENA left, GPIO25 -> ENB right)");
+
+    // Initialise the LCD (16 columns, 2 rows)
+    lcd.begin(16, 2);
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Hello Robot!");
 
     pinMode(ledPin, OUTPUT);
     digitalWrite(ledPin, LOW); 
