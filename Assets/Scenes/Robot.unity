@@ -200,9 +200,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 57a5ebac95ba7d043bf8fe26420cb0dd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ESP32_Communicator
-  _esp32IP: 192.168.0.17
+  _esp32IP: 192.168.0.164
   _udpPort: 3310
   _connectionIndicator: {fileID: 501797585}
+  _repeatCommands: 0
 --- !u!114 &49428523
 MonoBehaviour:
   m_ObjectHideFlags: 0

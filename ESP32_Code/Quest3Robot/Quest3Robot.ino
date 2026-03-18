@@ -1,7 +1,8 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <LiquidCrystal.h>
-//#include "credentials.h"
+
+
 
 // Network configuration - Access Point mode
 const char* ssid = "YOUR_WIFI_SSID";
@@ -49,6 +50,13 @@ int rightMotorSpeed = 220;  // Right motor (ENB)
 unsigned long lastCommandTime = 0;
 const unsigned long COMMAND_TIMEOUT = 1000; // Stop if no command for 1 second
 
+// Packet loss tracking
+byte expectedSequence = 0;
+unsigned long totalReceived = 0;
+unsigned long totalDropped = 0;
+unsigned long lastLcdUpdateTime = 0;
+const unsigned long LCD_UPDATE_INTERVAL = 1000; // Update LCD every 1 second
+
 
 void setup() {
 
@@ -57,12 +65,9 @@ void setup() {
     Serial.println("\n=== ESP32 Turtle Robot Starting ===");
     Serial.println("Dual PWM pin configuration (GPIO26 -> ENA left, GPIO25 -> ENB right)");
 
-    // Initialise the LCD (16 columns, 2 rows)
-    lcd.begin(16, 2);
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("Hello Robot!");
+    initLCD();
 
+    
     pinMode(ledPin, OUTPUT);
     digitalWrite(ledPin, LOW); 
     
@@ -105,6 +110,14 @@ void setup() {
 }
 
 
+void initLCD() {
+     // Initialise the LCD (16 columns, 2 rows)
+    lcd.begin(16, 2);
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Robot Starting...");
+}
+
 void setupWiFiClient() {
   // Connect to existing network
   WiFi.mode(WIFI_STA);
@@ -125,9 +138,22 @@ void setupWiFiClient() {
     Serial.print("Signal strength (RSSI): ");
     Serial.print(WiFi.RSSI());
     Serial.println(" dBm");
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("WiFi Connected!");
+    lcd.setCursor(0, 1);
+    lcd.print(WiFi.localIP());
   } else {
     Serial.println("\nFailed to connect to WiFi!");
     Serial.println("Restarting in 5 seconds...");
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("WiFi FAILED!");
+    lcd.setCursor(0, 1);
+    lcd.print("Restarting...");
+
     delay(5000);
     ESP.restart();
   }
@@ -145,31 +171,49 @@ void loop() {
         return;
     }
 
-    // Check for UDP packets
+    // Check for UDP packets (expecting 2 bytes: [sequence, command])
     int packetSize = udp.parsePacket();
-    if (packetSize) {
-        // Read the command byte
-        byte command;
-        udp.read(&command, 1);
-        
+    if (packetSize >= 2) {
+        byte packet[2];
+        udp.read(packet, 2);
+        byte sequence = packet[0];
+        byte command = packet[1];
+
         // Get sender info for response
         IPAddress senderIP = udp.remoteIP();
         int senderPort = udp.remotePort();
-        
-        Serial.printf("Received command: 0x%02X (", command);
+
+        // Track packet loss
+        if (totalReceived > 0 && sequence != expectedSequence) {
+            // Calculate gap (handles wrapping)
+            byte gap = sequence - expectedSequence; // unsigned wrapping handles 255->0
+            totalDropped += gap;
+            Serial.printf("*** DROPPED %d packet(s)! Expected seq:%d, got seq:%d ***\n",
+                gap, expectedSequence, sequence);
+        }
+        expectedSequence = sequence + 1; // Will wrap naturally
+        totalReceived++;
+
+        Serial.printf("Seq:%d Cmd:0x%02X (", sequence, command);
         Serial.print(command, BIN);
         Serial.printf(") from %s:%d\n", senderIP.toString().c_str(), senderPort);
-        
+
         // Apply the command
         ApplyCommand(command);
         lastCommandTime = millis();
-        
+
         // Send acknowledgment
         udp.beginPacket(senderIP, senderPort);
         udp.print("OK");
         udp.endPacket();
 
         digitalWrite(ledPin, HIGH);
+    }
+
+    // Periodically update LCD with packet stats
+    if (millis() - lastLcdUpdateTime >= LCD_UPDATE_INTERVAL && totalReceived > 0) {
+        updateLcdStats();
+        lastLcdUpdateTime = millis();
     }
       
     // Optional: Check for serial commands for debugging
@@ -225,6 +269,20 @@ void ApplyPWM(byte command) {
     Serial.printf("PWM set to: L=%d R=%d\n",
         leftActive ? leftMotorSpeed : 0,
         rightActive ? rightMotorSpeed : 0);
+}
+
+void updateLcdStats() {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Rx:");
+    lcd.print(totalReceived);
+    lcd.print(" Drop:");
+    lcd.print(totalDropped);
+    lcd.setCursor(0, 1);
+    lcd.print("Loss:");
+    float lossPercent = (totalDropped * 100.0) / (totalReceived + totalDropped);
+    lcd.print(lossPercent, 1);
+    lcd.print("%");
 }
 
 // Additional helper functions for different movement commands
