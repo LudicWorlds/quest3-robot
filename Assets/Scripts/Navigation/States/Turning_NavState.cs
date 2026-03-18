@@ -14,6 +14,10 @@ public class Turning_NavState : NavState
 
     private float _turnIncrement = TURN_INCREMENT;
 
+    // Rotational velocity tracking for anticipatory braking
+    private float _prevAngle = 0f;
+    private float _rotationalVelocity = 0f; // degrees per second
+
     public Turning_NavState(IStateMachine<NavigationID> stateMachine, NavigationID id) : base(stateMachine, id)
     {
     }
@@ -24,7 +28,7 @@ public class Turning_NavState : NavState
         base.Enter();
         _elapsedTime = 0f;
         _direction = 0; //no direction assigned
-        _nextStateId = NavigationID.PAUSED;
+        _nextStateId = NavigationID.PAUSING;
 
         // Record starting Y rotation of headset/robot for rotation tracking
         _startingAngle = _ctrl.GetRobotYRotationAngle();
@@ -32,6 +36,10 @@ public class Turning_NavState : NavState
         // Initialize stuck detection
         _lastStuckCheckTime = 0f;
         _lastStuckCheckAngle = _startingAngle;
+
+        // Initialize rotational velocity tracking
+        _prevAngle = _startingAngle;
+        _rotationalVelocity = 0f;
 
         _ctrl.IsTurning = true;
     }
@@ -112,13 +120,26 @@ public class Turning_NavState : NavState
         float currentAngle = _ctrl.GetRobotYRotationAngle();
         float degreesRotated = Mathf.Abs(Mathf.DeltaAngle(_startingAngle, currentAngle));
 
+        // Track rotational velocity (degrees per second)
+        if (Time.deltaTime > 0f)
+        {
+            float deltaAngle = Mathf.Abs(Mathf.DeltaAngle(_prevAngle, currentAngle));
+            _rotationalVelocity = deltaAngle / Time.deltaTime;
+            _prevAngle = currentAngle;
+        }
+
         StuckDetection(currentAngle);
 
-        // Check if we've rotated by TURN_INCREMENT degrees - pause to re-evaluate
-        if (degreesRotated >= _turnIncrement)
+        // Anticipatory braking: estimate how far we'll rotate before stopping
+        // Use rotational velocity to predict overshoot (assumes ~0.25s to stop)
+        float estimatedOvershoot = _rotationalVelocity * 0.25f;
+        float brakeThreshold = _turnIncrement - estimatedOvershoot;
+
+        // Check if we should stop now to avoid overshooting the turn increment
+        if (degreesRotated >= Mathf.Max(brakeThreshold, _turnIncrement * 0.5f))
         {
-            Debug.Log($"[TurningAction] Rotated {degreesRotated:F1}° (target: {_turnIncrement}°) - pausing to re-evaluate");
-            _stateMachine.SetState(NavigationID.PAUSED);
+            Debug.Log($"[TurningAction] Braking at {degreesRotated:F1}° (target: {_turnIncrement}°, velocity: {_rotationalVelocity:F1}°/s, est overshoot: {estimatedOvershoot:F1}°)");
+            _stateMachine.SetState(NavigationID.PAUSING);
             return;
         }
 
@@ -128,12 +149,12 @@ public class Turning_NavState : NavState
         //We also check if we're aligned with TargetTurnAccuracy for early exit
         //-----------------
 
-        // Check if we are within our current TargetTurnAccuracy
-        if (Mathf.Abs(_angleToWaypoint) <= FINE_TURN_ACCURACY)
+        // Check if we are within our current TargetTurnAccuracy (accounting for momentum)
+        if (Mathf.Abs(_angleToWaypoint) <= FINE_TURN_ACCURACY + estimatedOvershoot)
         {
             Debug.Log($"[TurningState] Aligned after {_elapsedTime:F2}s of turning");
             _elapsedTime = 0f;
-            _stateMachine.SetState(NavigationID.PAUSED);
+            _stateMachine.SetState(NavigationID.PAUSING);
         }
         else
         { //We are NOT yet within our current TargetTurnAccuracy - keep turning
@@ -150,7 +171,7 @@ public class Turning_NavState : NavState
                 {
                     //Robot was turning left, which means we need to change direction (possible overshoot)
                     //Let's pause first!
-                    _stateMachine.SetState(NavigationID.PAUSED);
+                    _stateMachine.SetState(NavigationID.PAUSING);
                     return;
                 }
 
@@ -169,7 +190,7 @@ public class Turning_NavState : NavState
                 {
                     //Robot was turning right, which means we need to change direction (possible overshoot)
                     //Let's pause first!
-                    _stateMachine.SetState(NavigationID.PAUSED);
+                    _stateMachine.SetState(NavigationID.PAUSING);
                     return;
                 }
 

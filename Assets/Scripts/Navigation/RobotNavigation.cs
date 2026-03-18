@@ -95,7 +95,7 @@ public class RobotNavigation : GameObjectStateMachine<NavigationID>
         AddState(new Deciding_NavState(this, NavigationID.DECIDING));
         AddState(new Turning_NavState(this, NavigationID.TURNING));
         AddState(new Moving_NavState(this, NavigationID.MOVING));
-        AddState(new Paused_NavState(this, NavigationID.PAUSED));
+        AddState(new Pausing_NavState(this, NavigationID.PAUSING));
         AddState(new Waypoint_NavState(this, NavigationID.WAYPOINT));
         AddState(new Abort_NavState(this, NavigationID.ABORT));
 

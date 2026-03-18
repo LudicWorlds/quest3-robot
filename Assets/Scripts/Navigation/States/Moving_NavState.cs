@@ -14,7 +14,7 @@ public class Moving_NavState : NavState
     {
         Debug.Log("-> Moving_NavState::Enter()");
         base.Enter();
-        _nextStateId = NavigationID.PAUSED;
+        _nextStateId = NavigationID.PAUSING;
 
         _ctrl.PlayAudio(AudioID.MOVING);
 
@@ -49,7 +49,7 @@ public class Moving_NavState : NavState
         if (Mathf.Abs(_angleToWaypoint) > OFF_COURSE_ANGLE)
         {
             Debug.Log($"[MovingAction] Off course - Angle: {_angleToWaypoint:F1}° - pausing to re-evaluate");
-            _stateMachine.SetState(NavigationID.PAUSED);
+            _stateMachine.SetState(NavigationID.PAUSING);
             return;
         }
 

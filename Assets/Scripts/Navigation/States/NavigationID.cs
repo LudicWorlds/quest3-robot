@@ -6,7 +6,7 @@ public enum NavigationID
     DECIDING,
     TURNING,
     MOVING,
-    PAUSED,
+    PAUSING,
     WAYPOINT,
     ABORT
 }
