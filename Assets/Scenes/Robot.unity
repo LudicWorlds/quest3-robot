@@ -134,6 +134,7 @@ GameObject:
   - component: {fileID: 49428523}
   - component: {fileID: 49428524}
   - component: {fileID: 49428525}
+  - component: {fileID: 49428526}
   m_Layer: 0
   m_Name: RobotController
   m_TagString: Untagged
@@ -225,13 +226,14 @@ MonoBehaviour:
   _audio_GoingToFridge: {fileID: 8300000, guid: bffef95a581007a45bb772d05e9c3a48, type: 3}
   _audio_GoingToSofa: {fileID: 8300000, guid: c9fe1fdc83dfb384a977837b970b73ac, type: 3}
   _audio_GoingToTable: {fileID: 8300000, guid: 00ae84b9c78e3a24a81a8afe55a58799, type: 3}
-  _audio_IDontUnderstand: {fileID: 8300000, guid: 5447483dac9e17c41957e17db26dbb82, type: 3}
+  _audio_IDontUnderstand: {fileID: 8300000, guid: 4844a29a9fed5f24caff6187e94fa6e8, type: 3}
   _audio_Abort: {fileID: 8300000, guid: 737ed42e22e44fe44a6ebb24ee3282c1, type: 3}
   _audio_Pathfinding: {fileID: 8300000, guid: 13eb171da6800304fa5cf600922921a5, type: 3}
   _audio_Right: {fileID: 8300000, guid: 7a8aa9babb66ec54db9006787d88acbf, type: 3}
   _audio_Left: {fileID: 8300000, guid: 39f6fca410479bf4997b2ab57f3ccf4e, type: 3}
   _audio_Pause: {fileID: 8300000, guid: ef1243635815a4242b0e41b231552b2e, type: 3}
   _audio_Stuck: {fileID: 8300000, guid: 303c6f289f6386c4cb8cc8a19ef8b6e6, type: 3}
+  _audio_Obstructed: {fileID: 8300000, guid: 960a746784d7dea438683e21c34d8e14, type: 3}
 --- !u!114 &49428524
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -263,6 +265,25 @@ MonoBehaviour:
   SilenceThreshold: 0.02
   RunWhisper: {fileID: 54229473}
   PlaybackRecordedAudio: 1
+--- !u!114 &49428526
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 49428518}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4255d074808ee514ba01926d49ead397, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ObstacleDetector
+  _raycastManager: {fileID: 1441500618}
+  _detectionDistance: 0.2
+  _clearanceMargin: 0.05
+  _raycastInterval: 0.1
+  _numRays: 3
+  _spreadAngle: 15
+  _headsetTransform: {fileID: 1848740388}
 --- !u!1 &54229472
 GameObject:
   m_ObjectHideFlags: 0
@@ -1636,6 +1657,8 @@ GameObject:
   - component: {fileID: 1441500614}
   - component: {fileID: 1441500613}
   - component: {fileID: 1441500612}
+  - component: {fileID: 1441500617}
+  - component: {fileID: 1441500618}
   m_Layer: 0
   m_Name: '[BuildingBlock] Camera Rig'
   m_TagString: Untagged
@@ -1739,7 +1762,7 @@ MonoBehaviour:
   requestEyeTrackingPermissionOnStartup: 0
   requestScenePermissionOnStartup: 1
   requestRecordAudioPermissionOnStartup: 0
-  requestPassthroughCameraAccessPermissionOnStartup: 0
+  requestPassthroughCameraAccessPermissionOnStartup: 1
   _localDimming: 1
   _trackingOriginType: 1
   usePositionTracking: 1
@@ -1803,6 +1826,35 @@ Transform:
   - {fileID: 131451331}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1441500617
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1441500611}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71a155ece80369d4e99bdaf5e59169b5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Meta.XR.EnvironmentDepth::Meta.XR.EnvironmentDepth.EnvironmentDepthManager
+  _occlusionShadersMode: 0
+  _removeHands: 0
+  CustomTrackingSpace: {fileID: 0}
+  <MaskMeshFilters>k__BackingField: []
+--- !u!114 &1441500618
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1441500611}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2d8affdff7ba47d892cc734baac9ac71, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: meta.xr.mrutilitykit::Meta.XR.EnvironmentRaycastManager
+  CustomTrackingSpace: {fileID: 0}
 --- !u!1 &1450004261
 GameObject:
   m_ObjectHideFlags: 0

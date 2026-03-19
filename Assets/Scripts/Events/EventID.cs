@@ -1,3 +1,4 @@
+
 public static class EventID
 {
     public static string INSTRUCTION_READY = "instruction_ready";
@@ -10,4 +11,7 @@ public static class EventID
 
     public static string ENABLE_MIC_RECORDING = "enable_mic_recording";
     public static string DISABLE_MIC_RECORDING = "disable_mic_recording";
+
+    public static string OBSTRUCTION_DETECTED = "obstruction_detected";
+    public static string OBSTRUCTION_CLEARED = "obstruction_cleared";
 }

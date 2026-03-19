@@ -1,3 +1,4 @@
+using System;
 using LudicWorlds;
 using UnityEngine;
 
@@ -15,6 +16,8 @@ public class Moving_NavState : NavState
         Debug.Log("-> Moving_NavState::Enter()");
         base.Enter();
         _nextStateId = NavigationID.PAUSING;
+
+        _eventBroker.Events[EventID.OBSTRUCTION_DETECTED] += OnObstructionDetected;
 
         _ctrl.PlayAudio(AudioID.MOVING);
 
@@ -59,6 +62,8 @@ public class Moving_NavState : NavState
     public override void Exit()
     {
         Debug.Log("-> Moving_NavState::Exit()");
+        _eventBroker.Events[EventID.OBSTRUCTION_DETECTED] -= OnObstructionDetected;
+
         _ctrl.Com.SetCommandGivenAction(RobotAction.Stop);
 
         if (_stateMachine.NextState.ID == NavigationID.ABORT)
@@ -67,6 +72,12 @@ public class Moving_NavState : NavState
             _ctrl.DebugInfo += $"- _angleToWaypoint: {_angleToWaypoint}\n";
             _ctrl.DebugInfo += $"- _distanceToWaypoint: {_distanceToWaypoint}\n";
         }
+    }
+
+    private void OnObstructionDetected(object sender, EventArgs e)
+    {
+        Debug.Log("[Moving_NavState] Obstruction detected - transitioning to OBSTRUCTED");
+        _stateMachine.SetState(NavigationID.OBSTRUCTED);
     }
 
     public override void Dispose()

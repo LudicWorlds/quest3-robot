@@ -8,5 +8,6 @@ public enum NavigationID
     MOVING,
     PAUSING,
     WAYPOINT,
-    ABORT
+    ABORT,
+    OBSTRUCTED
 }
