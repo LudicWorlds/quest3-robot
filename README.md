@@ -11,6 +11,7 @@ Key Features
 
 - **On-Device Speech Recognition** - Local Whisper AI model (no cloud required)
 - **Navigation/Pathfinding** - NavMesh-based route planning
+- **Obstacle Avoidance** - Pre-calculated NavMesh paths navigate around static room geometry, while real-time obstruction detection uses the Quest 3's depth sensor to detect unexpected obstacles (e.g. putting your hand in front of the robot), pausing navigation until the path is clear
 - **Spatial Anchor System** - Persistent location markers that survive across sessions
 - **Manual Override** - Direct joystick control via Quest Touch controllers
 
@@ -37,6 +38,7 @@ Hardware Requirements
 - Meta Quest 3
 - [ESP32 Development Board](https://dratek.cz/arduino-platforma/51547-esp32-devkitc-development-board-38pin.html) (DevKit C variant with WiFi)
 - [L298N Motor Driver](https://dratek.cz/arduino-platforma/877-arduino-h-mustek-pro-krokovy-motor-l298n-dual-h-most-dc.html) (H-bridge module)
+- TC1602A-21T LCD (16x2 character display for ESP32 debug output)
 - [2x DC Geared Motors + wheels](https://dratek.cz/arduino-platforma/972-kolo-s-prevodovanym-motorem.html) (6V with gear reduction)
 - [6x AA Battery Pack](https://dratek.cz/arduino-platforma/7497-bateriovy-box-6xaa-1.5v.html) (9V total)
 - Wireless Lavalier Microphone (e.g. [Soundeus Wireless Lavalier USB-C](https://www.alza.cz/EN/soundeus-wireless-lavalier-usb-c-d9494970.htm))
@@ -63,11 +65,11 @@ Software Requirements
 ---------------------
 
 - **Arduino IDE** - v2.3.6 (For programming the ESP32 microcontroller)
-- **Unity Editor** - Version 6000.3.3f1 (tested version)
+- **Unity Editor** - Version 6000.4.0f1 (tested version)
 
 
 **Unity Packages:**
-- **Meta MR Utility Kit** - v81.0.0
+- **Meta MR Utility Kit** - v85.0.0
 - **Inference Engine** - v2.3.0
 - **Oculus XR Plugin** - v4.5.2
 - **Unity AI Navigation** - For NavMesh support
@@ -123,7 +125,7 @@ For complete wiring instructions, see the circuit diagram: `Documentation/quest3
 **Open the Project:**
 1. Launch Unity Hub
 2. Add project from disk
-3. Open with Unity 6000.3.3f1 (or above)
+3. Open with Unity 6000.4.0f1 (or above)
 4. Wait for package import to complete (may take several minutes)
 
 **Configure Build Settings:**
@@ -144,8 +146,8 @@ Note: Developer Mode must be enabled on Quest 3 (via Meta Quest mobile app)
 
 1. Connect Quest 3 to PC via USB cable
 2. In Unity Build Settings, ensure **Run Device** shows "Oculus Quest 3"
-4. Click **Build and Run**
-5. Unity will build and automatically deploy to your headset
+3. Click **Build and Run**
+4. Unity will build and automatically deploy to your headset
 
 
 How to Use the App
@@ -179,7 +181,6 @@ How to Use the App
 
 **Touch Controller Reference:**
 
-Place destination Marker at the Selected Anchor
 - **Right Index Trigger** - Set destination marker at ray position
 - **Left Index Trigger** - Set selected anchor as destination
 - **Right Grip Trigger** - Place spatial anchor (when pointing)
@@ -199,10 +200,10 @@ How It Works
 
 The Quest 3 handles all high-level processing:
 1. **Speech Recognition** - MicRecorder captures audio, Whisper AI transcribes to text
-3. **Anchor Lookup** - Finds spatial anchor matching the location
-4. **Pathfinding** - Calculates NavMesh path around obstacles
-5. **Navigation** - State machine executes turning and movement actions
-6. **Motor Commands** - ESP32_Communicator sends UDP packets to the ESP32
+2. **Anchor Lookup** - Finds spatial anchor matching the location
+3. **Pathfinding** - Calculates NavMesh path around obstacles
+4. **Navigation** - State machine executes turning and movement actions
+5. **Motor Commands** - ESP32_Communicator sends UDP packets to the ESP32
 
 Unity component structure and relationships:
 
@@ -213,6 +214,7 @@ The ESP32 handles low-level motor control:
 2. Decodes 4-bit motor commands
 3. Controls L298N motor driver via GPIO pins
 4. Executes forward, backward, left, right, and stop actions
+5. Displays debug information (WiFi status, packet loss stats) on the onboard TC1602A LCD
 
 
 Known Issues
@@ -233,14 +235,11 @@ Known Issues
 
 2. **Limited Vocabulary** - Currently recognizes only pre-defined location keywords. Custom locations can be added by editing the voice recognition code.
 
-3. **Static Obstacle Detection** - Robot uses pre-calculated NavMesh paths. I may add real-time obstacle avoidance using the Quest's depth sensors in a future version.
-
 
 ### Navigation Quirks
 
 1. **Settling Delays** - Robot pauses briefly after each turn/move to allow physical settling. This ensures accurate heading for next action but adds time.
 
-2. **Turn Accuracy** - Currently the robot can overshoot when turning to align itself with it's next destination.
 
 
 Not for Commercial Use
