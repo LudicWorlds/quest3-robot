@@ -142,8 +142,8 @@ public class MicRecorder : GameObjectStateMachine<RecorderStateID>
         // Unsubscribe from events
         if (_eventBroker != null)
         {
-            _eventBroker.Events[EventID.ENABLE_MIC_RECORDING] -= OnEnableMicRecording;
-            _eventBroker.Events[EventID.DISABLE_MIC_RECORDING] -= OnDisableMicRecording;
+            //_eventBroker.Events[EventID.STANDBY_ENTER] -= OnStandbyEnter;
+            //_eventBroker.Events[EventID.STANDBY_EXIT] -= OnStandbyExit;
         }
 
         base.OnDestroy();

@@ -273,15 +273,11 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
         _eventBroker.CreateEventHandler(EventID.IDLE_NAV_EXIT);
         _eventBroker.CreateEventHandler(EventID.ENABLE_MIC_RECORDING);
         _eventBroker.CreateEventHandler(EventID.DISABLE_MIC_RECORDING);
-        _eventBroker.CreateEventHandler(EventID.OBSTRUCTION_DETECTED);
-        _eventBroker.CreateEventHandler(EventID.OBSTRUCTION_CLEARED);
 
 
         _eventBroker.Events[EventID.INSTRUCTION_READY] += OnInstructionReady;
         _eventBroker.Events[EventID.IDLE_NAV_ENTER] += OnNavIdleEnter;
         _eventBroker.Events[EventID.IDLE_NAV_EXIT] += OnNavIdleExit;
-        _eventBroker.Events[EventID.OBSTRUCTION_DETECTED] += OnObstructionDetected;
-        _eventBroker.Events[EventID.OBSTRUCTION_CLEARED] += OnObstructionCleared;
     }
 
 
@@ -427,18 +423,7 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
         SetState(RobotStateID.MOVING);
     }
 
-    private void OnObstructionDetected(object sender, EventArgs e)
-    {
-        Debug.Log("[RobotCtrl] OnObstructionDetected");
-    }
-
-    private void OnObstructionCleared(object sender, EventArgs e)
-    {
-        Debug.Log("[RobotCtrl] OnObstructionCleared");
-    }
-
-
-    protected override void OnDestroy()
+    private void OnDestroy()
     {
         StopHaptics();
 
@@ -447,11 +432,6 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
             _eventBroker.Events[EventID.INSTRUCTION_READY] -= OnInstructionReady;
             _eventBroker.Events[EventID.IDLE_NAV_ENTER] -= OnNavIdleEnter;
             _eventBroker.Events[EventID.IDLE_NAV_EXIT] -= OnNavIdleExit;
-
-            _eventBroker.Events[EventID.OBSTRUCTION_DETECTED] -= OnObstructionDetected;
-            _eventBroker.Events[EventID.OBSTRUCTION_CLEARED] -= OnObstructionCleared;
         }
-
-        base.OnDestroy();
     }
 }

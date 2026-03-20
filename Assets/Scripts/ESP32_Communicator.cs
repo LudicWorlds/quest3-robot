@@ -19,7 +19,7 @@ public enum RobotAction
 public class ESP32_Communicator : MonoBehaviour
 {
     [Header("Network Settings")]
-    [SerializeField] private string _esp32IP = "192.168.0.164"; //"192.168.0.17"; // Update with your ESP32's IP
+    [SerializeField] private string _esp32IP = "192.168.0.18"; // Update with your ESP32's IP
     [SerializeField] private int _udpPort = 3310;
     [SerializeField] private GameObject _connectionIndicator; // Optional: 3D object to show connection status
 
@@ -32,9 +32,6 @@ public class ESP32_Communicator : MonoBehaviour
     private readonly object _responseLock = new object();
 
     // Command repetition for reliability
-    [SerializeField] private bool _repeatCommands = false;
-
-
     private float _lastCommandSentTime = 0f;
     private int _commandRepeatCount = 0;
     private const float COMMAND_REPEAT_INTERVAL = 0.1f; // 100ms between repeats
@@ -42,7 +39,6 @@ public class ESP32_Communicator : MonoBehaviour
 
     private byte _lastValue = 255; // Use 255 so first comparison always sends - equals 0b11111111
     private byte _command = 0;
-    private byte _sequenceNumber = 0; // Wraps 0-255 for packet loss detection
 
     public byte Command
     {
@@ -158,11 +154,10 @@ public class ESP32_Communicator : MonoBehaviour
     {
         try
         {
-            byte[] data = { _sequenceNumber, command };
+            byte[] data = { command };
             _udpClient.Send(data, data.Length, _esp32EndPoint);
 
-            Debug.Log($"- Sent seq:{_sequenceNumber} command:{command}");
-            _sequenceNumber++; // Wraps naturally at 255->0
+            Debug.Log($"- Sent command: {command}");
             _txComCount++;
             DebugPanel.TxComCount(_txComCount);
         }
@@ -183,8 +178,7 @@ public class ESP32_Communicator : MonoBehaviour
             _lastCommandSentTime = Time.time;
             _commandRepeatCount = 1;
         }
-        else if (_repeatCommands &&
-                 _commandRepeatCount < MAX_COMMAND_REPEATS &&
+        else if (_commandRepeatCount < MAX_COMMAND_REPEATS &&
                  Time.time - _lastCommandSentTime >= COMMAND_REPEAT_INTERVAL)
         {
             // Repeat current command for reliability (including stop commands)

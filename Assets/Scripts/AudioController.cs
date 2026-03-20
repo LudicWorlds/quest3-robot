@@ -20,7 +20,6 @@ public class AudioController : MonoBehaviour
     [SerializeField] private AudioClip _audio_Left;
     [SerializeField] private AudioClip _audio_Pause;
     [SerializeField] private AudioClip _audio_Stuck;
-    [SerializeField] private AudioClip _audio_Obstructed;
 
     private EventBroker _eventBroker;
     private bool _wasPlaying = false;
@@ -173,11 +172,6 @@ public class AudioController : MonoBehaviour
         PlayAudioClip(_audio_Stuck, true);
     }
 
-    private void Play_Obstructed()
-    {
-        PlayAudioClip(_audio_Obstructed, true);
-    }
-
 
     protected void OnPlayAudio(object sender, EventArgs e)
     {
@@ -250,9 +244,7 @@ public class AudioController : MonoBehaviour
                     case AudioID.STUCK:
                         Play_Stuck();
                         break;
-                    case AudioID.OBSTRUCTED:
-                        Play_Obstructed();
-                        break;
+
                 }
             }
 
