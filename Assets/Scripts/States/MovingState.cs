@@ -19,8 +19,7 @@ public class MovingState : RobotState
 
     public override void Update()
     {
-        // TODO: Monitor RobotNavigation state
-        // When destination reached, transition to LISTENING or SPEAKING
+
     }
 
     public override void Exit()

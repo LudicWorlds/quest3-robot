@@ -17,4 +17,5 @@ public class AudioID
     public const string LEFT = "Left";
     public const string PAUSE = "Pause";
     public const string STUCK = "Stuck";
+    public const string OBSTRUCTED = "Obstructed";
 }
