@@ -5,12 +5,12 @@ using UnityEngine;
 
 [RequireComponent(typeof(LocationAnchorManager))]
 [RequireComponent(typeof(ESP32_Communicator))]
-[RequireComponent(typeof(RobotNavigation))]
+[RequireComponent(typeof(RobotNavigator))]
 [RequireComponent(typeof(MicRecorder))]
 
 public class RobotController : GameObjectStateMachine<RobotStateID>
 {
-    [Header("Robot Navigation")]
+    [Header("Robot Navigator")]
     [SerializeField] private Transform _headsetTransform; // The Quest 3 headset's transform (which is mounted on top of the real robot)
 
     [Header("Room Awareness")]
@@ -25,7 +25,7 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
 
     protected EventBroker _eventBroker;
 
-    private RobotNavigation _robotNavigation;
+    private RobotNavigator _robotNavigator;
     private LocationAnchorManager _locationAnchorManager;
     private ESP32_Communicator _esp32_communicator;
     private MicRecorder _micRecorder;
@@ -48,9 +48,9 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
     // Controller feedback
     private const float HAPTIC_DURATION = 0.1f;
 
-    public RobotNavigation Nav
+    public RobotNavigator Nav
     {
-        get { return _robotNavigation; }
+        get { return _robotNavigator; }
     }
 
     public Transform HeadsetTransform
@@ -72,11 +72,11 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
 
         InitEvents();
 
-        _robotNavigation = GetComponent<RobotNavigation>();
+        _robotNavigator = GetComponent<RobotNavigator>();
 
-        if (_robotNavigation == null)
+        if (_robotNavigator == null)
         {
-            Debug.LogError("[RobotCtrl] _robotNavigation is NULL :(");
+            Debug.LogError("[RobotCtrl] _robotNavigator is NULL :(");
         }
 
 
@@ -326,7 +326,7 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
         {
             Vector3 hitPoint = hit.point;
             Vector3 hitNormal = hit.normal;
-            _robotNavigation.PlaceDestinationMarker(hit.point);
+            _robotNavigator.PlaceDestinationMarker(hit.point);
             //           Debug.Log("hitPoint X:" + hit.point.x + " Y:" + hitPoint.y + " Z: " + hitPoint.z);
         }
     }
@@ -342,7 +342,7 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
 
             //If the navigation is in standy-by mode - moving the marker will imediately set off
             //the (state-based) navigation process
-            _robotNavigation.PlaceDestinationMarker(anchorPos);
+            _robotNavigator.PlaceDestinationMarker(anchorPos);
 
         }
     }
@@ -379,7 +379,7 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
 
     private void EmergencyStop()
     {
-        _robotNavigation.StopNavigation();
+        _robotNavigator.StopNavigation();
         _esp32_communicator.EmergencyStop();
     }
 
@@ -392,7 +392,7 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
         {
             Debug.Log("[RobotCtrl] OnInstructionReady - Instruction: " + args.Instruction);
 
-            _robotNavigation.Instruction = args.Instruction;
+            _robotNavigator.Instruction = args.Instruction;
 
             bool anchorFound = _locationAnchorManager.SelectNearestAnchorWithLabel(args.Instruction, _headsetTransform.position
                                 );
@@ -409,7 +409,7 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
         else
         {
             Debug.Log("[RobotCtrl] OnInstructionReady - I don't understand!");
-            _robotNavigation.Instruction = "";
+            _robotNavigator.Instruction = "";
 
             _eventBroker.DispatchEvent(EventID.PLAY_AUDIO, new PlayAudioEventArgs(AudioID.I_DONT_UNDERSTAND));
         }

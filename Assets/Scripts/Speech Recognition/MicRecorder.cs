@@ -113,7 +113,7 @@ public class MicRecorder : GameObjectStateMachine<RecorderStateID>
 
     private void OnEnableMicRecording(object sender, EventArgs e)
     {
-        Debug.Log("[MicRecorder] RobotNavigation entered IDLE - recording enabled");
+        Debug.Log("[MicRecorder] RobotNavigator entered IDLE - recording enabled");
         IsRecording = true;
 
         // If in DISABLED state, transition to DetectStartOfSpeech to start listening
@@ -125,7 +125,7 @@ public class MicRecorder : GameObjectStateMachine<RecorderStateID>
 
     private void OnDisableMicRecording(object sender, EventArgs e)
     {
-        Debug.Log("[MicRecorder] RobotNavigation exited IDLE - recording disabled");
+        Debug.Log("[MicRecorder] RobotNavigator exited IDLE - recording disabled");
         IsRecording = false;
 
         // If currently listening for speech or processing, transition to DISABLED

@@ -1538,7 +1538,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7063087298018443459, guid: ce90af5f067bcbc458eec7b5c5482ceb, type: 3}
       propertyPath: <OnNavMeshInitialized>k__BackingField.m_PersistentCalls.m_Calls.Array.data[1].m_TargetAssemblyTypeName
-      value: RobotNavigation, Assembly-CSharp
+      value: RobotNavigator, Assembly-CSharp
       objectReference: {fileID: 0}
     - target: {fileID: 7063087298018443459, guid: ce90af5f067bcbc458eec7b5c5482ceb, type: 3}
       propertyPath: <OnNavMeshInitialized>k__BackingField.m_PersistentCalls.m_Calls.Array.data[2].m_TargetAssemblyTypeName
@@ -1705,6 +1705,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _monoscopic: 0
   _sharpenType: 0
+  _disableRecording: 0
   _enableDynamicResolution: 1
   minDynamicResolutionScale: 0.7
   maxDynamicResolutionScale: 1.3
@@ -1776,6 +1777,10 @@ MonoBehaviour:
   SimultaneousHandsAndControllersEnabled: 0
   _readOnlyWideMotionModeHandPosesEnabled: 0
   wideMotionModeHandPosesEnabled: 0
+  _readOnlyFastMotionModeHandPosesEnabled: 0
+  fastMotionModeHandPosesEnabled: 0
+  _readOnlyWideMotionMode2HandPosesEnabled: 0
+  wideMotionMode2HandPosesEnabled: 0
   dynamicResolutionVersion: 1
 --- !u!114 &1441500614
 MonoBehaviour:

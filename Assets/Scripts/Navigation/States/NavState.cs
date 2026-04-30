@@ -13,7 +13,7 @@ public class NavState : GameObjectState<NavigationID>
     public const float WAYPOINT_RADIUS = 0.10f;
     public const float MOVEMENT_THRESHOLD = 0.15f;
 
-    protected RobotNavigation _ctrl;
+    protected RobotNavigator _ctrl;
     protected int _stage = 0;
 
     protected float _angleToWaypoint = 0f;
@@ -29,7 +29,7 @@ public class NavState : GameObjectState<NavigationID>
     public NavState(IStateMachine<NavigationID> stateMachine, NavigationID id) : base(stateMachine, id)
     {
         _eventBroker = EventBroker.GetInstance();
-        _ctrl = stateMachine as RobotNavigation;
+        _ctrl = stateMachine as RobotNavigator;
         _stage = 0;
     }
 

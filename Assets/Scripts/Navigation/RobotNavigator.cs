@@ -6,7 +6,7 @@ using UnityEngine.AI;
 
 
 [RequireComponent(typeof(ESP32_Communicator))]
-public class RobotNavigation : GameObjectStateMachine<NavigationID>
+public class RobotNavigator : GameObjectStateMachine<NavigationID>
 {
     [Header("Visual Feedback")]
     [SerializeField] private GameObject _destinationMarker;
@@ -121,14 +121,14 @@ public class RobotNavigation : GameObjectStateMachine<NavigationID>
         }
         else
         {
-            Debug.LogError("-> RobotNavigation::Start() - Can't find RobotController! :(");
+            Debug.LogError("-> RobotNavigator::Start() - Can't find RobotController! :(");
         }
 
         _esp32_communicator = GetComponent<ESP32_Communicator>();
 
         if (_esp32_communicator == null)
         {
-            Debug.LogError("-> RobotNavigation::Start() - _esp32_communicator is null :(");
+            Debug.LogError("-> RobotNavigator::Start() - _esp32_communicator is null :(");
         }
 
         base.Start(); //Inits the states
