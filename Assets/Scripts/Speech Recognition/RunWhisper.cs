@@ -4,7 +4,7 @@ using Unity.InferenceEngine;
 using TMPro;
 using LudicWorlds;
 
-// https://huggingface.co/unity/sentis-whisper-tiny/blob/main/RunWhisper.cs
+// https://huggingface.co/unity/inference-engine-whisper-tiny/blob/main/RunWhisper.cs
 
 public class RunWhisper : GameObjectStateMachine<WhisperStateID>
 {
@@ -22,8 +22,7 @@ public class RunWhisper : GameObjectStateMachine<WhisperStateID>
     public Worker argmax { get; set; }
 
     // Link your audioclip here. Format must be 16Hz mono non-compressed.
-    private AudioClip audioClip;
-    public AudioClip AudioClip { get { return audioClip; } }
+    public AudioClip AudioClip { get; private set; }
     public Tensor<float> AudioInput { get; set; }
 
 
@@ -43,6 +42,8 @@ public class RunWhisper : GameObjectStateMachine<WhisperStateID>
     public string Transcription { get; set; }
     public string Instruction { get; set; }
 
+    public RunMiniLM MiniLM { get; private set; }
+
     protected override void Awake()
     {
         IsReady = false;
@@ -54,6 +55,18 @@ public class RunWhisper : GameObjectStateMachine<WhisperStateID>
 
     protected override void Start()
     {
+        // We are going to use 'Sentence Similarity' to determine what the user actually wants
+        // the robot to do. We will use the 'Mini LM v6 model' to do this: 
+        // Ref: https://huggingface.co/unity/inference-engine-minilm-v6
+
+        //Hence, we will reference the 'RunMiniLM.cs' script here to access its functions
+        MiniLM = GetComponent<RunMiniLM>();
+
+        if (MiniLM == null)
+        {
+            Debug.LogError("-> RunWhisper::Start - Can't find the 'RunMiniLM' component! :( ");
+        }
+
         base.Start(); // <- Init States
     }
 
@@ -92,7 +105,7 @@ public class RunWhisper : GameObjectStateMachine<WhisperStateID>
         Debug.Log("-> SentisWisper::Transcribe() ...");
 
         IsReady = false;
-        audioClip = clip;
+        AudioClip = clip;
 
         SetState( WhisperStateID.START_TRANSCRIPTION );
     }

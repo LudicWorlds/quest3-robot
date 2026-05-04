@@ -12,7 +12,7 @@ public class Deciding_NavState : NavState
 
     public override void Enter()
     {
-        Debug.Log("-> Deciding_NavState::Enter()");
+ //--       Debug.Log("-> Deciding_NavState::Enter()");
         base.Enter();
         _stage = 0;
         _elapsedTime = 0f;
@@ -45,7 +45,7 @@ public class Deciding_NavState : NavState
         _angleToWaypoint = _ctrl.CalculateAngleToWaypoint();
         _distanceToWaypoint = _ctrl.CalculateDistanceToWaypoint();
 
-        DebugPanel.UpdateNavState($"Deciding - Angle: {_angleToWaypoint:F1}° Dist: {_distanceToWaypoint:F2}m");
+//--        DebugPanel.UpdateNavState($"Deciding - Angle: {_angleToWaypoint:F1}° Dist: {_distanceToWaypoint:F2}m");
 
         //OK, we let's round down (reduce) the TargetTurnAccuracy to the nearest multiple of 10
         //_ctrl.TargetTurnAccuracy = _angleToWaypoint - _angleToWaypoint % 10;
@@ -58,13 +58,13 @@ public class Deciding_NavState : NavState
         if (Mathf.Abs(_angleToWaypoint) <= FINE_TURN_ACCURACY)
         {
             //We are more-or-less aligned/on-target, move towards the target...
-            Debug.Log($"[Deciding_NavState] Aligned - moving forward");
+ //--           Debug.Log($"[Deciding_NavState] Aligned - moving forward");
             _stateMachine.SetState(NavigationID.MOVING);
         }
         else
         {
             // Need to turn
-            Debug.Log($"[Deciding_NavState] Need to turn - Angle: {_angleToWaypoint:F1}°");
+//--            Debug.Log($"[Deciding_NavState] Need to turn - Angle: {_angleToWaypoint:F1}°");
             _stateMachine.SetState(NavigationID.TURNING);
         }
     }
@@ -72,7 +72,7 @@ public class Deciding_NavState : NavState
 
     public override void Exit()
     {
-        Debug.Log("-> Deciding_NavState::Exit()");
+//--        Debug.Log("-> Deciding_NavState::Exit()");
     }
 
     public override void Dispose()

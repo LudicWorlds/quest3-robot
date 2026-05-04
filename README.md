@@ -24,6 +24,9 @@ This project includes the following third-party components:
 - **Whisper Tiny Model** - Speech recognition model from OpenAI, obtained from:
   https://huggingface.co/unity/inference-engine-whisper-tiny
 
+- **MiniLM v6 Model** - Sentence similarity model (sentence-transformers/all-MiniLM-L6-v2), obtained as ONNX from:
+  https://huggingface.co/unity/inference-engine-minilm-v6
+
 - **Meta MR Utility Kit** - For spatial mapping and anchor management:
   https://assetstore.unity.com/packages/tools/integration/meta-mr-utility-kit-272450
 
@@ -51,6 +54,9 @@ License
 This project is licensed under the MIT License (see `LICENSE.txt`). However, it includes components that are licensed under different terms:
 
 - **Whisper Model** - Apache License 2.0:
+  https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md
+
+- **MiniLM v6 Model** - Apache License 2.0:
   https://huggingface.co/datasets/choosealicense/licenses/blob/main/markdown/apache-2.0.md
 
 - **Meta MR Utility Kit** - Oculus SDK License (see `META_SDK_LICENSE.txt`):

@@ -24,7 +24,7 @@ public class Turning_NavState : NavState
 
     public override void Enter()
     {
-        Debug.Log("-> Turning_NavState::Enter()");
+ //--       Debug.Log("-> Turning_NavState::Enter()");
         base.Enter();
         _elapsedTime = 0f;
         _direction = 0; //no direction assigned
@@ -67,9 +67,11 @@ public class Turning_NavState : NavState
 
     public override void Exit()
     {
-        Debug.Log("-> Turning_NavState::Exit()");
+//--        Debug.Log("-> Turning_NavState::Exit()");
         _ctrl.Com.SetCommandGivenAction(RobotAction.Stop);
 
+
+        /*
         //if (_stateMachine.NextState.ID == NavigationID.ABORT)
        //{
             float currentAngle = _ctrl.GetRobotYRotationAngle();
@@ -81,6 +83,7 @@ public class Turning_NavState : NavState
             _ctrl.DebugInfo += $"- degreesRotated: {degreesRotated:F1}°\n";
             _ctrl.DebugInfo += $"- _elapsedTime: {_elapsedTime}\n\n";
         //}
+        */
     }
 
 
@@ -138,7 +141,7 @@ public class Turning_NavState : NavState
         // Check if we should stop now to avoid overshooting the turn increment
         if (degreesRotated >= Mathf.Max(brakeThreshold, _turnIncrement * 0.5f))
         {
-            Debug.Log($"[TurningAction] Braking at {degreesRotated:F1}° (target: {_turnIncrement}°, velocity: {_rotationalVelocity:F1}°/s, est overshoot: {estimatedOvershoot:F1}°)");
+//--            Debug.Log($"[TurningAction] Braking at {degreesRotated:F1}° (target: {_turnIncrement}°, velocity: {_rotationalVelocity:F1}°/s, est overshoot: {estimatedOvershoot:F1}°)");
             _stateMachine.SetState(NavigationID.PAUSING);
             return;
         }
@@ -152,7 +155,7 @@ public class Turning_NavState : NavState
         // Check if we are within our current TargetTurnAccuracy (accounting for momentum)
         if (Mathf.Abs(_angleToWaypoint) <= FINE_TURN_ACCURACY + estimatedOvershoot)
         {
-            Debug.Log($"[TurningState] Aligned after {_elapsedTime:F2}s of turning");
+//--            Debug.Log($"[TurningState] Aligned after {_elapsedTime:F2}s of turning");
             _elapsedTime = 0f;
             _stateMachine.SetState(NavigationID.PAUSING);
         }
@@ -175,7 +178,7 @@ public class Turning_NavState : NavState
                     return;
                 }
 
-                DebugPanel.UpdateNavState($"Turning right - Angle: {_angleToWaypoint:F1}� Rotated: {degreesRotated:F1}°/{_turnIncrement}°");
+//--                DebugPanel.UpdateNavState($"Turning right - Angle: {_angleToWaypoint:F1}� Rotated: {degreesRotated:F1}°/{_turnIncrement}°");
             }
             else
             {//Try to turn left
@@ -194,7 +197,7 @@ public class Turning_NavState : NavState
                     return;
                 }
 
-                DebugPanel.UpdateNavState($"Turning left - Angle: {_angleToWaypoint:F1}� Rotated: {degreesRotated:F1}°/{_turnIncrement}°");
+//--                DebugPanel.UpdateNavState($"Turning left - Angle: {_angleToWaypoint:F1}� Rotated: {degreesRotated:F1}°/{_turnIncrement}°");
             }
         }
     }
@@ -209,7 +212,7 @@ public class Turning_NavState : NavState
             if (rotationSinceLastCheck < MIN_ROTATION_CHANGE && _direction != 0)
             {
                 // Robot appears stuck - resend the turn command
-                Debug.Log($"[TurningState] Stuck detected! Rotated only {rotationSinceLastCheck:F2}° in {STUCK_CHECK_INTERVAL}s - resending command");
+//--                Debug.Log($"[TurningState] Stuck detected! Rotated only {rotationSinceLastCheck:F2}° in {STUCK_CHECK_INTERVAL}s - resending command");
                 _ctrl.PlayAudio(AudioID.STUCK);
 
                 if (_direction == 1)

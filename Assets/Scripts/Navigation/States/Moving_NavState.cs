@@ -13,7 +13,7 @@ public class Moving_NavState : NavState
 
     public override void Enter()
     {
-        Debug.Log("-> Moving_NavState::Enter()");
+//--        Debug.Log("-> Moving_NavState::Enter()");
         base.Enter();
         _nextStateId = NavigationID.PAUSING;
 
@@ -51,17 +51,17 @@ public class Moving_NavState : NavState
         // Check if we've gone off course significantly
         if (Mathf.Abs(_angleToWaypoint) > OFF_COURSE_ANGLE)
         {
-            Debug.Log($"[MovingAction] Off course - Angle: {_angleToWaypoint:F1}° - pausing to re-evaluate");
+ //--           Debug.Log($"[MovingAction] Off course - Angle: {_angleToWaypoint:F1}° - pausing to re-evaluate");
             _stateMachine.SetState(NavigationID.PAUSING);
             return;
         }
 
-        DebugPanel.UpdateNavState($"Moving forward - Dist: {_distanceToWaypoint:F2}m");
+//--        DebugPanel.UpdateNavState($"Moving forward - Dist: {_distanceToWaypoint:F2}m");
     }
 
     public override void Exit()
     {
-        Debug.Log("-> Moving_NavState::Exit()");
+//--        Debug.Log("-> Moving_NavState::Exit()");
         _eventBroker.Events[EventID.OBSTRUCTION_DETECTED] -= OnObstructionDetected;
 
         _ctrl.Com.SetCommandGivenAction(RobotAction.Stop);
@@ -76,7 +76,7 @@ public class Moving_NavState : NavState
 
     private void OnObstructionDetected(object sender, EventArgs e)
     {
-        Debug.Log("[Moving_NavState] Obstruction detected - transitioning to OBSTRUCTED");
+//--        Debug.Log("[Moving_NavState] Obstruction detected - transitioning to OBSTRUCTED");
         _stateMachine.SetState(NavigationID.OBSTRUCTED);
     }
 

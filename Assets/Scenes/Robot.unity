@@ -294,8 +294,9 @@ GameObject:
   m_Component:
   - component: {fileID: 54229474}
   - component: {fileID: 54229473}
+  - component: {fileID: 54229475}
   m_Layer: 0
-  m_Name: RunWhisper
+  m_Name: Speech Recognition
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -334,6 +335,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &54229475
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 54229472}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 480d9ffba24e970449159513441d5338, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RunMiniLM
+  modelAsset: {fileID: 5022602860645237092, guid: ce31ed0ea5e303545a42f79832bf1e9c, type: 3}
+  vocabAsset: {fileID: 4900000, guid: 898a3210285d5b647b7842594b80b0d5, type: 3}
 --- !u!1 &123746823
 GameObject:
   m_ObjectHideFlags: 0

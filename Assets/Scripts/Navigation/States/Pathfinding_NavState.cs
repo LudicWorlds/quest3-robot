@@ -13,7 +13,7 @@ public class Pathfinding_NavState : NavState
 
     public override void Enter()
     {
-        Debug.Log("-> Pathfinding_NavState::Enter()");
+//--        Debug.Log("-> Pathfinding_NavState::Enter()");
         base.Enter();
         _stage = 0;
         _elapsedTime = 0f;
@@ -54,7 +54,7 @@ public class Pathfinding_NavState : NavState
                 if (_elapsedTime >= _waitDuration)
                 {
                     // Hopefully path calculation is complete - proceed to navigation
-                    DebugPanel.UpdateNavState("Path calculated - starting navigation");
+//--                    DebugPanel.UpdateNavState("Path calculated - starting navigation");
 
                     _ctrl.AssignNavMeshPathToWaypoints();
                     _stateMachine.SetState(NavigationID.DECIDING);
@@ -62,7 +62,7 @@ public class Pathfinding_NavState : NavState
                 else
                 {
                     // Still waiting for path calculation
-                    DebugPanel.UpdateNavState($"Calculating path... {_elapsedTime:F1}s");
+//--                    DebugPanel.UpdateNavState($"Calculating path... {_elapsedTime:F1}s");
                 }
 
                 break;
@@ -71,7 +71,7 @@ public class Pathfinding_NavState : NavState
 
     public override void Exit()
     {
-        Debug.Log("-> Pathfinding_NavState::Exit()");
+//--        Debug.Log("-> Pathfinding_NavState::Exit()");
         //VirtualAgent can move automatically again
         _ctrl.VirtualAgent.isStopped = false;
     }

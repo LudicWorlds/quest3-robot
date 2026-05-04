@@ -20,7 +20,7 @@ public class Pausing_NavState : NavState
 
     public override void Enter()
     {
-        Debug.Log("-> Pausing_NavState::Enter()");
+//--        Debug.Log("-> Pausing_NavState::Enter()");
         base.Enter();
         _elapsedTime = 0f;
         _nextStateId = NavigationID.DECIDING;
@@ -70,14 +70,14 @@ public class Pausing_NavState : NavState
                 {
                     _isSettled = true;
                     _settledTime = _elapsedTime;
-                    Debug.Log($"[Pausing_NavState] Robot settled (rotated only {rotationSinceLastCheck:F2}° in {CHECK_INTERVAL}s)");
+//--                    Debug.Log($"[Pausing_NavState] Robot settled (rotated only {rotationSinceLastCheck:F2}° in {CHECK_INTERVAL}s)");
                 }
             }
             else
             {
                 // Robot still moving - reset settled state
                 _isSettled = false;
-                Debug.Log($"[Pausing_NavState] Robot still settling (rotated {rotationSinceLastCheck:F2}° in {CHECK_INTERVAL}s)");
+//--                Debug.Log($"[Pausing_NavState] Robot still settling (rotated {rotationSinceLastCheck:F2}° in {CHECK_INTERVAL}s)");
 
 
                 //TODO: !!! Get the actual state of the motors from the ESP32 Chip!!!
@@ -95,24 +95,24 @@ public class Pausing_NavState : NavState
         if (_isSettled)
         {
             float waitRemaining = ADDITIONAL_WAIT - (_elapsedTime - _settledTime);
-            DebugPanel.UpdateNavState($"Pausing - settled, waiting {waitRemaining:F2}s");
+//--            DebugPanel.UpdateNavState($"Pausing - settled, waiting {waitRemaining:F2}s");
         }
         else
         {
-            DebugPanel.UpdateNavState($"Pausing - still settling ({_elapsedTime:F2}s)");
+//--            DebugPanel.UpdateNavState($"Pausing - still settling ({_elapsedTime:F2}s)");
         }
 
         // Transition after additional wait period
         if (_isSettled && (_elapsedTime - _settledTime >= ADDITIONAL_WAIT))
         {
-            Debug.Log($"[Pausing_NavState] Settling complete after {_elapsedTime:F2}s - transitioning to DECIDING");
+//--            Debug.Log($"[Pausing_NavState] Settling complete after {_elapsedTime:F2}s - transitioning to DECIDING");
             _stateMachine.SetState(NavigationID.DECIDING);
         }
     }
 
     public override void Exit()
     {
-        Debug.Log("-> Pausing_NavState::Exit()");
+//--        Debug.Log("-> Pausing_NavState::Exit()");
     }
 
     public override void Dispose()
