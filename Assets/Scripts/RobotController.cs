@@ -15,10 +15,12 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
 
     [Header("Room Awareness")]
 
-    [SerializeField] private LineRenderer _rayLine; // Optional: Line renderer to show raycast
+    [SerializeField] private LineRenderer _rightRayLine; // Optional: aim ray for the right controller (destinations)
+    [SerializeField] private LineRenderer _leftRayLine; // Optional: aim ray for the left controller (anchor placement)
     [SerializeField] private LayerMask _roomLayerMask = -1; // Which layers to raycast against
 
     [SerializeField] private Transform _rightControllerTransform;
+    [SerializeField] private Transform _leftControllerTransform;
     [SerializeField] private float _rayLength = 5;
 
     //---
@@ -35,6 +37,10 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
     private Vector2 _rightStick;
     private bool _wasStickActive = false; // Track if stick was previously used for manual control
 
+    private const float STICK_FLICK_THRESHOLD = 0.7f; // Left stick deflection that registers as a 'flick'
+    private Vector2 _leftStick;
+    private bool _leftStickArmed = true; // False once a flick has fired, until the stick returns to the deadzone
+
     // temp vars -----------
     private string[] _locationLabels = { LocationLabel.FRIDGE,
                                  LocationLabel.SOFA,
@@ -47,6 +53,9 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
 
     // Controller feedback
     private const float HAPTIC_DURATION = 0.1f;
+    private const float HAPTIC_LIGHT = 0.3f;  // selection / label change / toggles
+    private const float HAPTIC_MEDIUM = 0.6f; // place anchor / set destination
+    private const float HAPTIC_STRONG = 1.0f; // stop / destroy
 
     public RobotNavigator Nav
     {
@@ -127,83 +136,71 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
     {
         base.Update(); // Run state machine update
         RespondToTouchControllerInput();
+        DrawAimRay(_rightRayLine, _rightControllerTransform);
+        DrawAimRay(_leftRayLine, _leftControllerTransform);
     }
 
 
+    // Layout: right hand = drive & destinations, left hand = anchor setup & safety.
+    // Each controller aims with its own ray. Keep the "Touch Controller Reference" section of README.md in sync with this method.
     private void RespondToTouchControllerInput()
     {
-        // Quest 3 Controller Input
-        if (OVRInput.GetDown(OVRInput.Button.One)) //A Button - Cycle forward through anchors
-        {
-            _locationAnchorManager.CycleToNextAnchor();
-        }
+        //-------------------------------------
+        // Right controller - drive & destinations
+        //-------------------------------------
 
-        if (OVRInput.GetDown(OVRInput.Button.Two)) //B button - Cycle through through anchor labels
-        {
-            _locationAnchorManager.CycleLabelForward();
-        }
-
-        if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger)) //Left Index Trigger - Place destination marker at selected anchor
-        {
-            // Place destination Marker at the Selected Anchor
-            PlaceDestinationMarkerAtSelectedAnchor();
-        }
-
-
-        if (OVRInput.GetDown(OVRInput.Button.PrimaryHandTrigger)) //Left Grip Trigger - Save all anchors
-        {
-            _locationAnchorManager.SaveAllSpatialAnchors();
-        }
-
-        if (OVRInput.GetDown(OVRInput.Button.SecondaryIndexTrigger)) //Right controller trigger (on press)
+        if (OVRInput.GetDown(OVRInput.Button.SecondaryIndexTrigger)) // Right Index Trigger - Set destination where the right controller points (robot starts moving)
         {
             PlaceDestinationMarkerAtRaycastHit();
+            ProvideHapticFeedback(OVRInput.Controller.RTouch, HAPTIC_MEDIUM);
         }
 
-        if (OVRInput.GetDown(OVRInput.Button.SecondaryHandTrigger)) // Grip trigger - Place or Move anchor
+        if (OVRInput.GetDown(OVRInput.Button.SecondaryHandTrigger)) // Right Grip - Go to the selected anchor
+        {
+            PlaceDestinationMarkerAtSelectedAnchor();
+            ProvideHapticFeedback(OVRInput.Controller.RTouch, HAPTIC_MEDIUM);
+        }
+
+        if (OVRInput.GetDown(OVRInput.Button.Two)) // B Button - Toggle DebugPanel visibility
+        {
+            DebugPanel.ToggleVisibility();
+            ProvideHapticFeedback(OVRInput.Controller.RTouch, HAPTIC_LIGHT);
+        }
+
+        //-------------------------------------
+        // Left controller - anchor setup & safety
+        //-------------------------------------
+
+        if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger)) // Left Index Trigger - Place new anchor, or move the selected one, where the left controller points
         {
             PlaceLocationAnchorAtRaycastHit();
+            ProvideHapticFeedback(OVRInput.Controller.LTouch, HAPTIC_MEDIUM);
         }
 
-        if (OVRInput.GetDown(OVRInput.Button.Three)) //X Button (Left Controller) 
-        {
-            SetState(RobotStateID.ABORT);
-
-            /*
-            CycleToNextLocationLabel();
-
-            bool anchorFound = _locationAnchorManager.SelectNearestAnchorWithLabel(_targetLabel, _headsetTransform.position);
-
-            if (anchorFound)
-            {
-                Debug.Log("[RobotCtrl] Selected an anchor with label: " + _targetLabel + " :)");
-            }
-            else
-            {
-                Debug.Log("[RobotCtrl] Can't find an anchor with label: " + _targetLabel + " :(");
-            }
-            */
-        }
-
-
-        if (OVRInput.GetDown(OVRInput.Button.Four)) //Y Button (Left Controller)
-        {
-            //Toggle DebugPanel visibility
-            DebugPanel.ToggleVisibility();
-        }
-
-        // Left controller thumbstick click - Destroy all anchors
-        if (OVRInput.GetDown(OVRInput.Button.PrimaryThumbstick))
-        {
-            _locationAnchorManager.DestroyAllLocationAnchors();
-        }
-
-        // Right controller thumbstick click - Emergency Stop
-        if (OVRInput.GetDown(OVRInput.Button.SecondaryThumbstick))
+        if (OVRInput.GetDown(OVRInput.Button.Three)) // X Button - STOP (halts motors, returns to STATIONARY with the mic re-armed)
         {
             EmergencyStop();
-            Debug.Log("[RobotCtrl] Emergency Stop activated via thumbstick click!");
+            ProvideHapticFeedback(OVRInput.Controller.LTouch, HAPTIC_STRONG);
+            Debug.Log("[RobotCtrl] STOP activated via X button");
         }
+
+        if (OVRInput.GetDown(OVRInput.Button.Four)) // Y Button - Save all anchors
+        {
+            _locationAnchorManager.SaveAllSpatialAnchors();
+            ProvideHapticFeedback(OVRInput.Controller.LTouch, HAPTIC_LIGHT);
+        }
+
+        // Left Grip (held) + Left Thumbstick click - Destroy all anchors.
+        // Deliberate two-input chord: this permanently erases the anchors from headset storage.
+        if (OVRInput.Get(OVRInput.Button.PrimaryHandTrigger) && OVRInput.GetDown(OVRInput.Button.PrimaryThumbstick))
+        {
+            _locationAnchorManager.DestroyAllLocationAnchors();
+            ProvideHapticFeedback(OVRInput.Controller.LTouch, HAPTIC_STRONG);
+            Debug.Log("[RobotCtrl] Destroyed all anchors via Left Grip + Left Thumbstick click");
+        }
+
+        // Left Thumbstick flick - left/right selects previous/next anchor, up/down cycles the selected anchor's label
+        RespondToLeftStickFlick();
 
 
         //-------------------------------------
@@ -263,6 +260,62 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
         */
     }
 
+
+    // Edge-triggered: a flick fires once when the stick passes STICK_FLICK_THRESHOLD and
+    // re-arms only after it returns inside the deadzone, so holding the stick does not repeat.
+    private void RespondToLeftStickFlick()
+    {
+        _leftStick = OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick);
+        float magnitude = _leftStick.magnitude;
+
+        if (!_leftStickArmed)
+        {
+            if (magnitude < _stickDeadzone)
+                _leftStickArmed = true;
+
+            return;
+        }
+
+        if (magnitude < STICK_FLICK_THRESHOLD)
+            return;
+
+        _leftStickArmed = false;
+
+        // Dominant axis decides: horizontal = anchor selection, vertical = label
+        if (Mathf.Abs(_leftStick.x) > Mathf.Abs(_leftStick.y))
+        {
+            if (_leftStick.x > 0)
+                _locationAnchorManager.CycleToNextAnchor();
+            else
+                _locationAnchorManager.CycleToPreviousAnchor();
+        }
+        else
+        {
+            if (_leftStick.y > 0)
+                _locationAnchorManager.CycleLabelForward();
+            else
+                _locationAnchorManager.CycleLabelBackward();
+        }
+
+        ProvideHapticFeedback(OVRInput.Controller.LTouch, HAPTIC_LIGHT);
+    }
+
+
+    // Shows where a controller is pointing: the line ends on the room surface it hits,
+    // or at _rayLength if nothing is hit. Skipped when the line or transform is unassigned in the scene.
+    private void DrawAimRay(LineRenderer line, Transform controller)
+    {
+        if (line == null || controller == null)
+            return;
+
+        Vector3 origin = controller.position;
+        Vector3 end = PerformRoomRaycast(controller, out RaycastHit hit) ? hit.point : origin + controller.forward * _rayLength;
+
+        line.positionCount = 2;
+        line.SetPosition(0, origin);
+        line.SetPosition(1, end);
+    }
+
     public virtual void InitEvents()
     {
         _eventBroker = EventBroker.GetInstance();
@@ -303,7 +356,7 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
 
     public void PlaceLocationAnchorAtRaycastHit()
     {
-        bool hasHit = PerformRoomRaycast(out RaycastHit hit);
+        bool hasHit = PerformRoomRaycast(_leftControllerTransform, out RaycastHit hit);
 
         if (hasHit)
         {
@@ -320,7 +373,7 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
 
     public void PlaceDestinationMarkerAtRaycastHit()
     {
-        bool hasHit = PerformRoomRaycast(out RaycastHit hit);
+        bool hasHit = PerformRoomRaycast(_rightControllerTransform, out RaycastHit hit);
 
         if (hasHit)
         {
@@ -365,13 +418,20 @@ public class RobotController : GameObjectStateMachine<RobotStateID>
     }
 
 
-    private bool PerformRoomRaycast(out RaycastHit hit)
+    private bool PerformRoomRaycast(Transform controller, out RaycastHit hit)
     {
-//        Debug.Log("PerformRoomRaycast()");
+        hit = default;
 
-        _ray = new Ray(_rightControllerTransform.position, _rightControllerTransform.forward);
+        // Called every frame by DrawAimRay, so it must be safe before the MRUK room has loaded
+        if (controller == null || MRUK.Instance == null)
+            return false;
 
         MRUKRoom room = MRUK.Instance.GetCurrentRoom();
+
+        if (room == null)
+            return false;
+
+        _ray = new Ray(controller.position, controller.forward);
 
         return room.Raycast(_ray, _rayLength, out hit, out MRUKAnchor anchor);
     }

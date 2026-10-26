@@ -70,6 +70,9 @@ public class Pausing_NavState : NavState
                 {
                     _isSettled = true;
                     _settledTime = _elapsedTime;
+
+                    // If we got here from a turn, record how far it ran on after the Stop
+                    _ctrl.EndTurnStopMeasurement(currentAngle);
 //--                    Debug.Log($"[Pausing_NavState] Robot settled (rotated only {rotationSinceLastCheck:F2}° in {CHECK_INTERVAL}s)");
                 }
             }
@@ -113,6 +116,9 @@ public class Pausing_NavState : NavState
     public override void Exit()
     {
 //--        Debug.Log("-> Pausing_NavState::Exit()");
+
+        // Left before the robot settled (e.g. the destination moved) - don't learn from it
+        _ctrl.CancelTurnStopMeasurement();
     }
 
     public override void Dispose()

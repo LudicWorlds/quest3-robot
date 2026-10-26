@@ -8,8 +8,6 @@ public class NavState : GameObjectState<NavigationID>
     public const float FINE_TURN_ACCURACY = 8f; //Then, narrow down to this.
     public const float OFF_COURSE_ANGLE = 20f;
 
-    public const float TURN_INCREMENT = 10f;
-
     public const float WAYPOINT_RADIUS = 0.10f;
     public const float MOVEMENT_THRESHOLD = 0.15f;
 

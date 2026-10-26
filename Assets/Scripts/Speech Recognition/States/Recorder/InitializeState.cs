@@ -1,10 +1,14 @@
 using LudicWorlds;
 using UnityEngine;
+#if UNITY_ANDROID && !UNITY_EDITOR
+using UnityEngine.Android;
+#endif
 
 
 public class InitializeState : RecorderState
 {
     private int _micInitAttempts = 0;
+    private bool _micPermissionRequested = false; // RECORD_AUDIO is requested at most once per visit to this state
 
     public InitializeState(IStateMachine<RecorderStateID> stateMachine) : base(stateMachine, RecorderStateID.Initialize, RecorderStateID.WaitingForWhisper)
     {
@@ -17,6 +21,7 @@ public class InitializeState : RecorderState
         Debug.Log("-> InitializeState::Enter()");
         DebugPanel.UpdateSttState(_id.ToString());
         _micInitAttempts = 0;
+        _micPermissionRequested = false;
         _stage = 0;
     }
 
@@ -31,8 +36,16 @@ public class InitializeState : RecorderState
                 _stage = 1;
                 break;
             case 1:
-                //GetAudioSource();
-                _stage = 2;
+                // Microphone.devices is empty on Android until the RECORD_AUDIO runtime grant exists,
+                // so make sure we hold it before looking for a device.
+                if (HasMicPermission())
+                {
+                    _stage = 2;
+                }
+                else
+                {
+                    RequestMicPermission();
+                }
                 break;
             case 2:
                 if(GetMicrophone())
@@ -46,6 +59,46 @@ public class InitializeState : RecorderState
 
        }
     }
+
+    private bool HasMicPermission()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        return Permission.HasUserAuthorizedPermission(Permission.Microphone);
+#else
+        return true;
+#endif
+    }
+
+
+    private void RequestMicPermission()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        if (_micPermissionRequested)
+        {
+            return;
+        }
+
+        _micPermissionRequested = true;
+        Debug.Log($"-> Requesting {Permission.Microphone} permission");
+        DebugPanel.UpdateSttState("Initialize - Requesting Mic Permission");
+
+        var callbacks = new PermissionCallbacks();
+        callbacks.PermissionGranted += permission =>
+        {
+            Debug.Log($"-> {permission} granted");
+            DebugPanel.UpdateSttState("Initialize - Mic Permission Granted");
+        };
+        callbacks.PermissionDenied += permission =>
+        {
+            // Android stops showing the dialog after repeated denials; the user must then enable it manually.
+            Debug.LogWarning($"-> {permission} DENIED - enable it in Settings > Apps > Quest3Robot > Permissions");
+            DebugPanel.UpdateSttState("Mic Permission DENIED - enable in Settings > Apps");
+        };
+
+        Permission.RequestUserPermission(Permission.Microphone, callbacks);
+#endif
+    }
+
 
     private bool GetMicrophone()
     {

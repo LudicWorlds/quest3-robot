@@ -23,6 +23,10 @@ public class ESP32_Communicator : MonoBehaviour
     [SerializeField] private int _udpPort = 3310;
     [SerializeField] private GameObject _connectionIndicator; // Optional: 3D object to show connection status
 
+    [Header("Chassis")]
+    [Tooltip("Tick for a chassis with the drive wheels at the front (swaps the Left/Right turn bits). Untick for the original build with the drive wheels at the back.")]
+    [SerializeField] private bool _driveWheelsAtFront = true;
+
     private UdpClient _udpClient;
     private IPEndPoint _esp32EndPoint;
 
@@ -31,14 +35,19 @@ public class ESP32_Communicator : MonoBehaviour
     private bool _hasResponse = false;
     private readonly object _responseLock = new object();
 
-    // Command repetition for reliability
-    [SerializeField] private bool _repeatCommands = false;
-
+    // MOTOR-FIX 2 (heartbeat): replaces the optional command repetition (the _repeatCommands
+    // toggle, which was off in the scene, plus _commandRepeatCount, COMMAND_REPEAT_INTERVAL and
+    // MAX_COMMAND_REPEATS). The ESP32 now brakes if it hears nothing for COMMAND_TIMEOUT
+    // (500 ms, in Quest3Robot.ino), so while the robot is moving the current command is resent
+    // every HEARTBEAT_INTERVAL. A Stop is resent STOP_REPEATS more times in case a packet is
+    // lost, then the link goes quiet. Keep HEARTBEAT_INTERVAL well below COMMAND_TIMEOUT.
+    // The repetition is no longer optional: with it off, the failsafe would stop the robot
+    // every 0.5 s.
+    private const float HEARTBEAT_INTERVAL = 0.1f; // 100 ms between resends
+    private const int STOP_REPEATS = 2; // Extra Stop sends after the first one
 
     private float _lastCommandSentTime = 0f;
-    private int _commandRepeatCount = 0;
-    private const float COMMAND_REPEAT_INTERVAL = 0.1f; // 100ms between repeats
-    private const int MAX_COMMAND_REPEATS = 3; // Send command up to 3 times
+    private int _stopRepeatsLeft = 0; // MOTOR-FIX 2: Stop resends still to do
 
     private byte _lastValue = 255; // Use 255 so first comparison always sends - equals 0b11111111
     private byte _command = 0;
@@ -92,7 +101,15 @@ public class ESP32_Communicator : MonoBehaviour
 
     public void EmergencyStop()
     {
-        SendCommandViaWiFi(GetCommandGivenAction((int)RobotAction.Stop));
+        // MOTOR-FIX 2 (heartbeat): also make Stop the current command. This used to send a Stop
+        // packet and leave _command unchanged, which was harmless while commands were only sent
+        // when they changed. With the heartbeat, ProcessCommand would resend the old command
+        // (e.g. Forward from Moving_NavState) on the next frame and restart the robot.
+        _command = GetCommandGivenAction((int)RobotAction.Stop);
+        SendCommandViaWiFi(_command);
+        _lastValue = _command;
+        _lastCommandSentTime = Time.time;
+        _stopRepeatsLeft = STOP_REPEATS; // Resend the Stop like any other Stop
     }
 
     public void SetCommandGivenAction(RobotAction action)
@@ -116,13 +133,33 @@ public class ESP32_Communicator : MonoBehaviour
                 break;
 
             case 2: // Left turn: Left motor anticlockwise, Right motor clockwise
-                command |= 1 << 1; // Left motor reverse (Bit 1)
-                command |= 1 << 2; // Right motor forward (Bit 2)
+
+                if (_driveWheelsAtFront)
+                {
+                    // *** Drive motors at front, hence switching direction bits ***
+                    command |= 1 << 0; // Left motor forward (Bit 0)
+                    command |= 1 << 3; // Right motor reverse (Bit 3)
+                }
+                else
+                {
+                    command |= 1 << 1; // Left motor reverse (Bit 1)
+                    command |= 1 << 2; // Right motor forward (Bit 2)
+                }
                 break;
 
             case 3: // Right turn: Left motor clockwise, Right motor anticlockwise
-                command |= 1 << 0; // Left motor forward (Bit 0)
-                command |= 1 << 3; // Right motor reverse (Bit 3)
+
+                if (_driveWheelsAtFront)
+                {
+                    // *** Drive motors at front, hence switching direction bits ***
+                    command |= 1 << 1; // Left motor reverse (Bit 1)
+                    command |= 1 << 2; // Right motor forward (Bit 2)
+                }
+                else
+                {
+                    command |= 1 << 0; // Left motor forward (Bit 0)
+                    command |= 1 << 3; // Right motor reverse (Bit 3)
+                }
                 break;
 
             case 4: // Backward: Both motors anticlockwise
@@ -154,43 +191,63 @@ public class ESP32_Communicator : MonoBehaviour
         }
     }
 
-    private void SendCommandViaWiFi(byte command)
+    // MOTOR-FIX 4: isRepeat marks heartbeat and Stop resends, which are not logged
+    private void SendCommandViaWiFi(byte command, bool isRepeat = false)
     {
         try
         {
             byte[] data = { _sequenceNumber, command };
             _udpClient.Send(data, data.Length, _esp32EndPoint);
 
-            Debug.Log($"- Sent seq:{_sequenceNumber} command:{command}");
+            // MOTOR-FIX 4 (timestamps): new commands are logged with the time since app start, so
+            // they can be lined up against the ESP32's Serial log. Repeats are not logged:
+            // DebugPanel mirrors every log line, and 10 lines a second while driving would bury it.
+            // (Was: Debug.Log($"- Sent seq:{_sequenceNumber} command:{command}") on every send.)
+            if (!isRepeat)
+            {
+                Debug.Log($"[{Time.realtimeSinceStartup:F3} s] Sent seq:{_sequenceNumber} command:{command}");
+            }
             _sequenceNumber++; // Wraps naturally at 255->0
             _txComCount++;
             DebugPanel.TxComCount(_txComCount);
         }
         catch (Exception e)
         {
-            Debug.LogError($"Failed to send command: {e.Message}");
+            // MOTOR-FIX 4: only logged for new commands, so a lost link can't flood the log 10x a second
+            if (!isRepeat)
+            {
+                Debug.LogError($"Failed to send command: {e.Message}");
+            }
             UpdateConnectionIndicator(false);
         }
     }
 
     private void ProcessCommand()
     {
-        // Send command if it changed or repeat current command for reliability
         if (_command != _lastValue)
         {
-            // New command - send immediately and reset repeat counter
+            // New command - send immediately
             SendCommandViaWiFi(_command);
             _lastCommandSentTime = Time.time;
-            _commandRepeatCount = 1;
+            // MOTOR-FIX 2: a new Stop (command 0) is followed by STOP_REPEATS resends
+            _stopRepeatsLeft = (_command == 0) ? STOP_REPEATS : 0;
         }
-        else if (_repeatCommands &&
-                 _commandRepeatCount < MAX_COMMAND_REPEATS &&
-                 Time.time - _lastCommandSentTime >= COMMAND_REPEAT_INTERVAL)
+        else if (Time.time - _lastCommandSentTime >= HEARTBEAT_INTERVAL)
         {
-            // Repeat current command for reliability (including stop commands)
-            SendCommandViaWiFi(_command);
-            _lastCommandSentTime = Time.time;
-            _commandRepeatCount++;
+            // MOTOR-FIX 2 (heartbeat): the command hasn't changed since the last send
+            if (_command != 0)
+            {
+                // Moving: resend so the ESP32's failsafe knows the link is still alive
+                SendCommandViaWiFi(_command, true);
+                _lastCommandSentTime = Time.time;
+            }
+            else if (_stopRepeatsLeft > 0)
+            {
+                // Stopped: resend Stop a couple of times in case a packet was lost, then go quiet
+                SendCommandViaWiFi(_command, true);
+                _lastCommandSentTime = Time.time;
+                _stopRepeatsLeft--;
+            }
         }
 
         _lastValue = _command;
@@ -200,6 +257,14 @@ public class ESP32_Communicator : MonoBehaviour
     private void ProcessResponse(string response)
     {
         UpdateConnectionIndicator(true);
+
+        // MOTOR-FIX 4: the ESP32 acknowledges every packet with "OK". With the heartbeat that is
+        // about 10 a second while driving, so acks are only counted (RX on the DebugPanel) and no
+        // longer logged as "Response: OK".
+        if (response == "OK")
+        {
+            return;
+        }
 
         // Provide different haptic feedback based on LED state
         if (response == "LED_ON")
@@ -226,11 +291,18 @@ public class ESP32_Communicator : MonoBehaviour
         if (_hasResponse)
         {
             string response;
+            uint rxCount; // MOTOR-FIX 4
             lock (_responseLock)
             {
                 response = _pendingResponse;
+                rxCount = _rxComCount; // MOTOR-FIX 4
                 _hasResponse = false;
             }
+
+            // MOTOR-FIX 4: the RX counter is now shown here, on the main thread. It used to be set
+            // from the background receive thread, but DebugPanel.RxComCount updates a UI Text, and
+            // Unity UI should only be touched from the main thread.
+            DebugPanel.RxComCount(rxCount);
 
             // Process response on main thread
             ProcessResponse(response);
@@ -246,15 +318,17 @@ public class ESP32_Communicator : MonoBehaviour
             byte[] data = _udpClient.EndReceive(result, ref remoteEP);
             string response = Encoding.UTF8.GetString(data);
 
-            Debug.Log($"Received response: {response}");
-            _rxComCount++;
-            DebugPanel.RxComCount(_rxComCount);
+            // MOTOR-FIX 4: removed from this background thread:
+            //   Debug.Log($"Received response: {response}");  - logged every ack, ~10/s with the heartbeat
+            //   DebugPanel.RxComCount(_rxComCount);            - UI update, now done in CheckForPendingResponses
+            // The counter is now incremented inside the lock below.
 
             // Thread-safe storage of response
             lock (_responseLock)
             {
                 _pendingResponse = response;
                 _hasResponse = true;
+                _rxComCount++; // MOTOR-FIX 4: read on the main thread under the same lock
             }
         }
         catch (Exception e)

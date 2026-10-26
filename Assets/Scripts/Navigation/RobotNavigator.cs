@@ -85,6 +85,20 @@ public class RobotNavigator : GameObjectStateMachine<NavigationID>
 
     public float TargetTurnAccuracy { get; set; } = NavState.COARSE_TURN_ACCURACY;
 
+    // Turn stop calibration: how long the robot keeps rotating after a Stop. Turning_NavState
+    // stops early by (rotational velocity x TurnStopTime), and every normal turn stop is measured
+    // to refine it, so it adapts to the battery level and floor surface.
+    private const float INITIAL_TURN_STOP_TIME = 0.25f;  // The old fixed estimate
+    private const float MAX_TURN_STOP_TIME = 0.5f;       // Caps a bad measurement (e.g. the robot was bumped)
+    private const float TURN_STOP_LEARN_RATE = 0.3f;     // Weight of each new measurement in the running average
+    private const float MIN_MEASURABLE_TURN_SPEED = 20f; // deg/s - slower stops are too noisy to learn from
+
+    public float TurnStopTime { get; private set; } = INITIAL_TURN_STOP_TIME;
+
+    private bool _turnStopPending = false;
+    private float _turnStopAngle = 0f;
+    private float _turnStopSpeed = 0f;
+
     private EventBroker _eventBroker;
 
     protected override void InitStates()
@@ -196,6 +210,43 @@ public class RobotNavigator : GameObjectStateMachine<NavigationID>
 
         // Return the Y-axis (yaw) rotation of the headset in degrees
         return _headsetTransform.eulerAngles.y;
+    }
+
+
+    /// <summary>
+    /// Called when a turn stops normally. Remembers the heading and rotational velocity at the
+    /// moment Stop was sent, so EndTurnStopMeasurement can work out how far the robot ran on.
+    /// </summary>
+    public void BeginTurnStopMeasurement(float angle, float speed)
+    {
+        // A slow stop gives an unreliable stopping time (and would divide by ~0)
+        _turnStopPending = speed >= MIN_MEASURABLE_TURN_SPEED;
+        _turnStopAngle = angle;
+        _turnStopSpeed = speed;
+    }
+
+    /// <summary>
+    /// Called once the robot has settled after a stop. If a turn stop is being measured, converts
+    /// how far the robot ran on into a stopping time and folds it into TurnStopTime.
+    /// </summary>
+    public void EndTurnStopMeasurement(float settledAngle)
+    {
+        if (!_turnStopPending) return;
+        _turnStopPending = false;
+
+        float runOn = Mathf.Abs(Mathf.DeltaAngle(_turnStopAngle, settledAngle));
+        float measuredStopTime = Mathf.Min(runOn / _turnStopSpeed, MAX_TURN_STOP_TIME);
+        TurnStopTime = Mathf.Lerp(TurnStopTime, measuredStopTime, TURN_STOP_LEARN_RATE);
+
+        Debug.Log($"Turn stop: ran on {runOn:F1} deg at {_turnStopSpeed:F0} deg/s = {measuredStopTime:F2}s (avg {TurnStopTime:F2}s)");
+    }
+
+    /// <summary>
+    /// Drops a turn stop measurement that was interrupted before the robot settled.
+    /// </summary>
+    public void CancelTurnStopMeasurement()
+    {
+        _turnStopPending = false;
     }
 
 

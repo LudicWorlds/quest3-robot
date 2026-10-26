@@ -1,12 +1,12 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <LiquidCrystal.h>
-
+#include "D:/Misc/wifi_credentials.h"
 
 
 // Network configuration - Access Point mode
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+//const char* ssid = "YOUR_WIFI_SSID";
+//const char* password = "YOUR_WIFI_PASSWORD";
 
 WiFiUDP udp;
 const int udpPort = 3310;
@@ -43,12 +43,27 @@ const int pwmFreq = 30000;     // 30kHz PWM frequency
 const int pwmResolution = 8;   // 8-bit resolution (0-255)
 
 // Motor speed values (0-255) - adjust leftMotorSpeed to compensate for weaker left motor
-int leftMotorSpeed = 238;   // Left motor (ENA) - slightly higher to correct leftward veer
+int leftMotorSpeed = 220;   // Left motor (ENA) - slightly higher to correct leftward veer
 int rightMotorSpeed = 220;  // Right motor (ENB)
+
+// MOTOR-FIX 3 (active braking): PWM value written to a stopped motor's enable pin.
+// Enable HIGH with both direction inputs LOW is the L298N's "fast motor stop": the motor's
+// terminals are shorted through the driver, so the wheels stop at once instead of coasting.
+// Previously a stopped motor got 0 here (enable LOW = "free running" stop, i.e. coasting).
+const int BRAKE_DUTY = 255;
 
 // Timing variables
 unsigned long lastCommandTime = 0;
-const unsigned long COMMAND_TIMEOUT = 1000; // Stop if no command for 1 second
+// MOTOR-FIX 2 (failsafe): was 1000 ms and never checked. Now enforced by CheckCommandTimeout():
+// if the motors are running and no packet has arrived for this long, the robot brakes.
+// Unity resends the current command every 100 ms while moving (HEARTBEAT_INTERVAL in
+// ESP32_Communicator.cs), so 500 ms tolerates about 4 lost packets. Keep the two in step.
+const unsigned long COMMAND_TIMEOUT = 500; // Stop if no command for 0.5 seconds
+
+// MOTOR-FIX 2 (failsafe): the command currently applied to the motors. Lets loop() tell a
+// heartbeat (the same command again) from a new command, and tells the failsafe whether the
+// motors are running.
+byte currentCommand = 0;
 
 // Packet loss tracking
 byte expectedSequence = 0;
@@ -121,6 +136,12 @@ void initLCD() {
 void setupWiFiClient() {
   // Connect to existing network
   WiFi.mode(WIFI_STA);
+  // MOTOR-FIX 1 (WiFi sleep off): the Arduino core turns on WiFi "modem sleep" by default.
+  // The radio then sleeps between router beacons, and the router holds incoming packets until
+  // it wakes, so motor commands arrived late and in bunches (a quick turn + stop could arrive
+  // together, and a stop could arrive well after it was sent). Keeping the radio awake makes
+  // commands arrive when they are sent, at the cost of slightly higher current draw.
+  WiFi.setSleep(false);
   WiFi.begin(ssid, password);
   
   Serial.print("Connecting to WiFi");
@@ -138,6 +159,8 @@ void setupWiFiClient() {
     Serial.print("Signal strength (RSSI): ");
     Serial.print(WiFi.RSSI());
     Serial.println(" dBm");
+    // MOTOR-FIX 1: confirm in the Serial Monitor that power saving is really off
+    Serial.printf("WiFi power saving: %s\n", WiFi.getSleep() == WIFI_PS_NONE ? "OFF" : "ON");
 
     lcd.clear();
     lcd.setCursor(0, 0);
@@ -162,9 +185,19 @@ void setupWiFiClient() {
 
 void loop() {
 
+    // MOTOR-FIX 2 (failsafe): checked first, before anything below that can return early or
+    // wait, so the motors stop even when packets have stopped arriving.
+    CheckCommandTimeout();
+
     // Check WiFi connection (client mode only)
     if (WiFi.getMode() == WIFI_STA && WiFi.status() != WL_CONNECTED) {
+        PrintTimestamp(); // MOTOR-FIX 4
         Serial.println("WiFi connection lost! Attempting reconnect...");
+        // MOTOR-FIX 2 (failsafe): stop the motors straight away. This branch returns early and
+        // waits 1 s per reconnect attempt, so without this the motors kept running while offline.
+        if (currentCommand != 0) {
+            ApplyCommand(0);
+        }
         WiFi.reconnect();
         digitalWrite(ledPin, LOW);
         delay(1000);
@@ -188,18 +221,31 @@ void loop() {
             // Calculate gap (handles wrapping)
             byte gap = sequence - expectedSequence; // unsigned wrapping handles 255->0
             totalDropped += gap;
+            PrintTimestamp(); // MOTOR-FIX 4
             Serial.printf("*** DROPPED %d packet(s)! Expected seq:%d, got seq:%d ***\n",
                 gap, expectedSequence, sequence);
         }
         expectedSequence = sequence + 1; // Will wrap naturally
         totalReceived++;
 
+        // MOTOR-FIX 2 (heartbeat): while the robot moves, Unity resends the current command every
+        // 100 ms. A packet that repeats the command already applied is a heartbeat: it only resets
+        // the failsafe timer below, and the motor pins and PWM are left alone.
+        bool isNewCommand = (command != currentCommand);
+
+        // MOTOR-FIX 4 (timestamps): each packet line now starts with the time since boot and ends
+        // with "new" or "repeat", so the gap between a turn and a stop can be read off the log.
+        PrintTimestamp();
         Serial.printf("Seq:%d Cmd:0x%02X (", sequence, command);
         Serial.print(command, BIN);
-        Serial.printf(") from %s:%d\n", senderIP.toString().c_str(), senderPort);
+        Serial.printf(") from %s:%d %s\n", senderIP.toString().c_str(), senderPort,
+            isNewCommand ? "new" : "repeat");
 
-        // Apply the command
-        ApplyCommand(command);
+        // Apply the command (MOTOR-FIX 2: only when it differs from what the motors are doing)
+        if (isNewCommand) {
+            ApplyCommand(command);
+        }
+        // MOTOR-FIX 2 (failsafe): every packet, new or repeat, keeps the failsafe from firing
         lastCommandTime = millis();
 
         // Send acknowledgment
@@ -219,9 +265,35 @@ void loop() {
     // Optional: Check for serial commands for debugging
     if (Serial.available() > 0) {
         byte command = Serial.read();
+        PrintTimestamp(); // MOTOR-FIX 4
         Serial.printf("Serial command: 0x%02X\n", command);
         ApplyCommand(command);
+        // MOTOR-FIX 2 (failsafe): a serial command counts as a command too, so it runs for
+        // COMMAND_TIMEOUT and then the failsafe brakes the motors.
+        lastCommandTime = millis();
     }
+}
+
+
+// MOTOR-FIX 2 (failsafe): new function. Brakes the motors if they are running and no command
+// has arrived for COMMAND_TIMEOUT ms. This covers a lost Stop packet, WiFi dropping out, and
+// the headset app pausing or crashing (its heartbeat stops). Does nothing while stopped.
+void CheckCommandTimeout() {
+    bool motorsRunning = (currentCommand & 0b00001111) != 0;   // any direction bit set
+    unsigned long silence = millis() - lastCommandTime;
+
+    if (motorsRunning && silence > COMMAND_TIMEOUT) {
+        PrintTimestamp(); // MOTOR-FIX 4
+        Serial.printf("FAILSAFE: no command for %lu ms - braking\n", silence);
+        ApplyCommand(0);
+    }
+}
+
+
+// MOTOR-FIX 4 (timestamps): new function. Prints "[    1234 ms] " (milliseconds since boot) at
+// the start of a Serial log line, so the timing of commands can be read off the Serial Monitor.
+void PrintTimestamp() {
+    Serial.printf("[%8lu ms] ", millis());
 }
 
 
@@ -239,7 +311,7 @@ void TestMotors() {
         delay(500); // Wait 1 second before next step
     }
     
-    // Turn everything off at the end
+    // Turn everything off at the end (MOTOR-FIX 3: this now leaves both motors braked)
     ApplyCommand(0x00);
     
     Serial.println("Motor test complete!\n");
@@ -247,6 +319,9 @@ void TestMotors() {
 
 
 void ApplyCommand(byte command) {
+    // MOTOR-FIX 2 (failsafe): remember what the motors are doing (see CheckCommandTimeout)
+    currentCommand = command;
+
     // Apply each bit to its corresponding motor pin
     for (int i = 0; i < 4; i++) {
         bool pinState = (command >> i) & 0x01;
@@ -263,12 +338,18 @@ void ApplyPWM(byte command) {
     bool leftActive = (command & 0b00000011);   // Bits 0-1: left motor
     bool rightActive = (command & 0b00001100);   // Bits 2-3: right motor
 
-    ledcWrite(ENA, leftActive ? leftMotorSpeed : 0);
-    ledcWrite(ENB, rightActive ? rightMotorSpeed : 0);
+    // MOTOR-FIX 3 (active braking): a stopped motor now gets BRAKE_DUTY (enable HIGH) instead of
+    // 0 (enable LOW). Its direction inputs are both LOW (set in ApplyCommand), so the L298N brakes
+    // the motor instead of letting it coast to a stop.
+    ledcWrite(ENA, leftActive ? leftMotorSpeed : BRAKE_DUTY);
+    ledcWrite(ENB, rightActive ? rightMotorSpeed : BRAKE_DUTY);
 
-    Serial.printf("PWM set to: L=%d R=%d\n",
-        leftActive ? leftMotorSpeed : 0,
-        rightActive ? rightMotorSpeed : 0);
+    // MOTOR-FIX 4: timestamped. MOTOR-FIX 3: a braked motor is logged as BRAKE instead of 0.
+    PrintTimestamp();
+    Serial.print("PWM set to: L=");
+    if (leftActive) Serial.print(leftMotorSpeed); else Serial.print("BRAKE");
+    Serial.print(" R=");
+    if (rightActive) Serial.println(rightMotorSpeed); else Serial.println("BRAKE");
 }
 
 void updateLcdStats() {

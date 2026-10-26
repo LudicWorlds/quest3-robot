@@ -12,9 +12,8 @@ public class Turning_NavState : NavState
     private float _lastStuckCheckTime = 0f;
     private float _lastStuckCheckAngle = 0f;
 
-    private float _turnIncrement = TURN_INCREMENT;
-
     // Rotational velocity tracking for anticipatory braking
+    private const float VELOCITY_SMOOTHING_TIME = 0.1f; // seconds - the headset's frame-to-frame yaw is noisy
     private float _prevAngle = 0f;
     private float _rotationalVelocity = 0f; // degrees per second
 
@@ -70,6 +69,13 @@ public class Turning_NavState : NavState
 //--        Debug.Log("-> Turning_NavState::Exit()");
         _ctrl.Com.SetCommandGivenAction(RobotAction.Stop);
 
+        // A normal stop: measure how far the robot keeps rotating after it, so the next turn
+        // stops in the right place. Pausing_NavState completes the measurement once settled.
+        if (_stateMachine.NextState.ID == NavigationID.PAUSING)
+        {
+            _ctrl.BeginTurnStopMeasurement(_ctrl.GetRobotYRotationAngle(), _rotationalVelocity);
+        }
+
 
         /*
         //if (_stateMachine.NextState.ID == NavigationID.ABORT)
@@ -95,72 +101,37 @@ public class Turning_NavState : NavState
         // Calculate angle to waypoint
         _angleToWaypoint = _ctrl.CalculateAngleToWaypoint();
 
-        // Use absolute value for progressive turn increment logic
-        float absAngle = Mathf.Abs(_angleToWaypoint);
-
-
-
-        if (absAngle < 15f)
-        {
-            _turnIncrement = 5f;
-        }
-        else if (absAngle < 25f)
-        {
-            _turnIncrement = 10f;
-        }
-        else if (absAngle < 35f)
-        {
-            _turnIncrement = 15f;
-        }
-        else
-        {
-            _turnIncrement = 20f;
-        }
-
-
-
-        // Calculate how many degrees we've rotated since entering this state
         float currentAngle = _ctrl.GetRobotYRotationAngle();
-        float degreesRotated = Mathf.Abs(Mathf.DeltaAngle(_startingAngle, currentAngle));
 
-        // Track rotational velocity (degrees per second)
+        // Track rotational velocity (degrees per second), smoothed over ~VELOCITY_SMOOTHING_TIME
         if (Time.deltaTime > 0f)
         {
             float deltaAngle = Mathf.Abs(Mathf.DeltaAngle(_prevAngle, currentAngle));
-            _rotationalVelocity = deltaAngle / Time.deltaTime;
+            float frameVelocity = deltaAngle / Time.deltaTime;
+            float blend = 1f - Mathf.Exp(-Time.deltaTime / VELOCITY_SMOOTHING_TIME);
+            _rotationalVelocity = Mathf.Lerp(_rotationalVelocity, frameVelocity, blend);
             _prevAngle = currentAngle;
         }
 
         StuckDetection(currentAngle);
 
-        // Anticipatory braking: estimate how far we'll rotate before stopping
-        // Use rotational velocity to predict overshoot (assumes ~0.25s to stop)
-        float estimatedOvershoot = _rotationalVelocity * 0.25f;
-        float brakeThreshold = _turnIncrement - estimatedOvershoot;
-
-        // Check if we should stop now to avoid overshooting the turn increment
-        if (degreesRotated >= Mathf.Max(brakeThreshold, _turnIncrement * 0.5f))
-        {
-//--            Debug.Log($"[TurningAction] Braking at {degreesRotated:F1}° (target: {_turnIncrement}°, velocity: {_rotationalVelocity:F1}°/s, est overshoot: {estimatedOvershoot:F1}°)");
-            _stateMachine.SetState(NavigationID.PAUSING);
-            return;
-        }
-
         //-----------------
-        //I want to turn in small increments, with 'pauses' in between (to prevent overshooting)
-        //Hence, we exit after rotating TURN_INCREMENT degrees, then pause to re-evaluate
-        //We also check if we're aligned with TargetTurnAccuracy for early exit
+        //Turn in one go: keep turning until the robot would come to rest on the target if we
+        //stopped now. The stopping angle is the current velocity x the stopping time that
+        //RobotNavigator learns from previous turns (see BeginTurnStopMeasurement).
+        //Pausing_NavState then lets the robot settle and Deciding_NavState re-evaluates, which
+        //gives a small correction turn if we're still outside FINE_TURN_ACCURACY.
         //-----------------
+        float predictedStopAngle = _rotationalVelocity * _ctrl.TurnStopTime;
 
-        // Check if we are within our current TargetTurnAccuracy (accounting for momentum)
-        if (Mathf.Abs(_angleToWaypoint) <= FINE_TURN_ACCURACY + estimatedOvershoot)
+        if (Mathf.Abs(_angleToWaypoint) <= predictedStopAngle)
         {
-//--            Debug.Log($"[TurningState] Aligned after {_elapsedTime:F2}s of turning");
+//--            Debug.Log($"[TurningState] Stopping {_angleToWaypoint:F1} deg short after {_elapsedTime:F2}s (velocity: {_rotationalVelocity:F1} deg/s)");
             _elapsedTime = 0f;
             _stateMachine.SetState(NavigationID.PAUSING);
         }
         else
-        { //We are NOT yet within our current TargetTurnAccuracy - keep turning
+        { //Not there yet - keep turning
             if (_angleToWaypoint > 0)
             {//Try to turn right
 
@@ -178,7 +149,7 @@ public class Turning_NavState : NavState
                     return;
                 }
 
-//--                DebugPanel.UpdateNavState($"Turning right - Angle: {_angleToWaypoint:F1}� Rotated: {degreesRotated:F1}°/{_turnIncrement}°");
+//--                DebugPanel.UpdateNavState($"Turning right - Angle: {_angleToWaypoint:F1} deg, stop at: {predictedStopAngle:F1} deg");
             }
             else
             {//Try to turn left
@@ -197,7 +168,7 @@ public class Turning_NavState : NavState
                     return;
                 }
 
-//--                DebugPanel.UpdateNavState($"Turning left - Angle: {_angleToWaypoint:F1}� Rotated: {degreesRotated:F1}°/{_turnIncrement}°");
+//--                DebugPanel.UpdateNavState($"Turning left - Angle: {_angleToWaypoint:F1} deg, stop at: {predictedStopAngle:F1} deg");
             }
         }
     }
